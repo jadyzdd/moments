@@ -85,32 +85,21 @@
   }
 
   /* —— Time format —— */
-  function formatTime(ts) {
-    const parts = formatTimeParts(ts);
-    if (parts.unit) return parts.value + parts.unit;
-    return parts.value;
-  }
-
-  /** 拆成主数字/文案 + 副标签，供左侧艺术时间槽使用 */
-  function formatTimeParts(ts) {
-    const now = Date.now();
-    const diff = Math.max(0, now - ts);
-    const m = Math.floor(diff / 60000);
-    if (m < 1) return { value: '刚刚', unit: '', kind: 'just' };
-    if (m < 60) return { value: String(m), unit: '分钟前', kind: 'rel' };
-    const h = Math.floor(m / 60);
-    if (h < 24) return { value: String(h), unit: '小时前', kind: 'rel' };
-    const d = Math.floor(h / 24);
-    if (d < 7) return { value: String(d), unit: '天前', kind: 'rel' };
+  /** 左侧时间槽：固定显示具体年月日 */
+  function formatDateYMD(ts) {
     const date = new Date(ts);
+    const yyyy = date.getFullYear();
     const mm = date.getMonth() + 1;
     const dd = date.getDate();
-    const yyyy = date.getFullYear();
-    const thisYear = new Date().getFullYear();
-    if (yyyy !== thisYear) {
-      return { value: yyyy + '/' + mm, unit: dd + '日', kind: 'date' };
-    }
-    return { value: String(mm), unit: '月' + dd + '日', kind: 'date' };
+    return {
+      year: String(yyyy),
+      md: mm + '月' + dd + '日',
+      full: yyyy + '年' + mm + '月' + dd + '日',
+    };
+  }
+
+  function formatTime(ts) {
+    return formatDateYMD(ts).full;
   }
 
   function escapeHtml(s) {
@@ -160,33 +149,19 @@
   }
 
   function renderArtisticTime(ts) {
-    const parts = formatTimeParts(ts);
-    const title = formatTime(ts);
-    if (parts.kind === 'just') {
-      return (
-        '<div class="post-time-art kind-just" title="' +
-        escapeHtml(title) +
-        '" aria-label="' +
-        escapeHtml(title) +
-        '">' +
-        '<span class="time-just">' +
-        escapeHtml(parts.value) +
-        '</span></div>'
-      );
-    }
+    const d = formatDateYMD(ts);
+    const title = d.full;
     return (
-      '<div class="post-time-art kind-' +
-      escapeHtml(parts.kind) +
-      '" title="' +
+      '<div class="post-time-art" title="' +
       escapeHtml(title) +
       '" aria-label="' +
       escapeHtml(title) +
       '">' +
-      '<span class="time-value">' +
-      escapeHtml(parts.value) +
+      '<span class="time-year">' +
+      escapeHtml(d.year) +
       '</span>' +
-      '<span class="time-unit">' +
-      escapeHtml(parts.unit) +
+      '<span class="time-md">' +
+      escapeHtml(d.md) +
       '</span></div>'
     );
   }
