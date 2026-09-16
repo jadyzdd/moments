@@ -729,9 +729,6 @@
       return;
     }
     var d = new Date(n);
-    var pad2 = function (n) {
-      return n < 10 ? '0' + n : String(n);
-    };
     el.textContent =
       '上次同步：' +
       d.getFullYear() +
@@ -838,6 +835,10 @@
       }
     } catch (e) {}
     return Math.random().toString(36).slice(2, 8);
+  }
+
+  function pad2(n) {
+    return n < 10 ? '0' + n : String(n);
   }
 
   function yyyymmddLocal(d) {
@@ -998,7 +999,7 @@
     persistGhFields();
     var token = getGhToken();
     if (!token) {
-      setSyncStatus('还没有 Token，请先点「保存」写入后再同步', 'error');
+      setSyncStatus('还没有 Token，请先点「保存令牌」写入后再同步', 'error');
       updateSyncButtonState();
       return;
     }
@@ -1006,117 +1007,137 @@
     var repo = lsGet(GH_REPO_KEY, DEFAULT_REPO);
     var branch = lsGet(GH_BRANCH_KEY, DEFAULT_BRANCH);
 
-    var prepared = preparePostsForSync(App.getPosts());
-    if (prepared.oversized.length) {
-      var biggest = prepared.oversized[0].size;
-      setSyncStatus(
-        '有图片超过单文件上限 ' +
-          formatBytes(MAX_FILE_BYTES) +
-          '（约 ' +
-          formatBytes(biggest) +
-          '）。请先压缩或换较小的图后再同步。',
-        'error'
-      );
-      return;
-    }
-
-    var text = buildPostsJsonText(prepared.posts);
-    var bytes = utf8ByteLength(text);
-    if (bytes > MAX_POSTS_JSON_BYTES) {
-      setSyncStatus(
-        'posts.json 过大（约 ' +
-          formatBytes(bytes) +
-          '），超过建议上限 ' +
-          formatBytes(MAX_POSTS_JSON_BYTES) +
-          '。请减少动态或去掉仍嵌入的 data URL 后再同步。',
-        'error'
-      );
-      return;
-    }
-
     syncing = true;
     updateSyncButtonState();
-    var uploadCount = prepared.uploads.length;
-    if (uploadCount) {
-      setSyncStatus(
-        '正在上传 ' + uploadCount + ' 张图片到 ' + UPLOADS_DIR + '/…',
-        'pending'
-      );
-    } else {
-      setSyncStatus(
-        '正在同步 posts.json…（' + formatBytes(bytes) + '）',
-        'pending'
-      );
-    }
 
-    var headers = ghApiHeaders(token);
-
-    uploadFilesSequentially(
-      prepared.uploads,
-      owner,
-      repo,
-      branch,
-      headers,
-      function (done, total, item) {
-        setSyncStatus(
-          '正在上传图片 ' +
-            done +
-            '/' +
-            total +
-            '：' +
-            item.path +
-            '（' +
-            formatBytes(item.size) +
-            '）',
-          'pending'
-        );
-      }
-    )
-      .then(function () {
-        setSyncStatus(
-          '图片已上传，正在更新 posts.json…（' + formatBytes(bytes) + '）',
-          'pending'
-        );
-        var apiBase = ghContentsApi(owner, repo, 'posts.json');
-        return ghGetFileSha(apiBase, branch, headers).then(function (sha) {
-          return ghPutContent(
-            apiBase,
-            branch,
-            headers,
-            'Sync posts.json from Moments admin',
-            utf8ToBase64(text),
-            sha
-          );
-        });
-      })
-      .then(function (result) {
-        // Local feed should match what was pushed (paths, not data URLs)
-        App.setPosts(JSON.parse(text));
-        var now = Date.now();
-        lsSet(GH_LAST_SYNC_KEY, String(now));
-        renderLastSync();
-        renderAdminList();
-        var msg =
-          '同步成功' +
-          (uploadCount ? '（上传 ' + uploadCount + ' 张图，并更新 posts.json）' : '（已更新 posts.json）') +
-          '。约 1 分钟后刷新页面可见。';
-        setSyncStatus(msg, 'success');
-      })
-      .catch(function (err) {
-        if (err && err.status) {
-          setSyncStatus(mapGhError(err.status, err.body || err.json), 'error');
-        } else {
+    // Defer so the UI can paint "准备同步…" before heavy clone/base64 work
+    window.setTimeout(function () {
+      var prepared;
+      var text;
+      var bytes;
+      var uploadCount;
+      try {
+        setSyncStatus('正在处理本地数据…', 'pending');
+        prepared = preparePostsForSync(App.getPosts());
+        if (prepared.oversized.length) {
+          var biggest = prepared.oversized[0].size;
           setSyncStatus(
-            '网络或浏览器错误：' +
-              (err && err.message ? err.message : String(err)),
+            '有图片超过单文件上限 ' +
+              formatBytes(MAX_FILE_BYTES) +
+              '（约 ' +
+              formatBytes(biggest) +
+              '）。请先压缩或换较小的图后再同步。',
             'error'
           );
+          syncing = false;
+          updateSyncButtonState();
+          return;
         }
-      })
-      .then(function () {
+        text = buildPostsJsonText(prepared.posts);
+        bytes = utf8ByteLength(text);
+        if (bytes > MAX_POSTS_JSON_BYTES) {
+          setSyncStatus(
+            'posts.json 过大（约 ' +
+              formatBytes(bytes) +
+              '），超过建议上限 ' +
+              formatBytes(MAX_POSTS_JSON_BYTES) +
+              '。请减少动态或去掉仍嵌入的 data URL 后再同步。',
+            'error'
+          );
+          syncing = false;
+          updateSyncButtonState();
+          return;
+        }
+        uploadCount = prepared.uploads.length;
+        if (uploadCount) {
+          setSyncStatus(
+            '正在上传 ' + uploadCount + ' 张图片到 ' + UPLOADS_DIR + '/…',
+            'pending'
+          );
+        } else {
+          setSyncStatus(
+            '正在同步 posts.json…（' + formatBytes(bytes) + '）',
+            'pending'
+          );
+        }
+      } catch (err) {
+        setSyncStatus(
+          '准备同步失败：' + (err && err.message ? err.message : String(err)),
+          'error'
+        );
         syncing = false;
         updateSyncButtonState();
-      });
+        return;
+      }
+
+      var headers = ghApiHeaders(token);
+      uploadFilesSequentially(
+        prepared.uploads,
+        owner,
+        repo,
+        branch,
+        headers,
+        function (done, total, item) {
+          setSyncStatus(
+            '正在上传图片 ' +
+              done +
+              '/' +
+              total +
+              '：' +
+              item.path +
+              '（' +
+              formatBytes(item.size) +
+              '）',
+            'pending'
+          );
+        }
+      )
+        .then(function () {
+          setSyncStatus(
+            '图片已上传，正在更新 posts.json…（' + formatBytes(bytes) + '）',
+            'pending'
+          );
+          var apiBase = ghContentsApi(owner, repo, 'posts.json');
+          return ghGetFileSha(apiBase, branch, headers).then(function (sha) {
+            return ghPutContent(
+              apiBase,
+              branch,
+              headers,
+              'Sync posts.json from Moments admin',
+              utf8ToBase64(text),
+              sha
+            );
+          });
+        })
+        .then(function () {
+          App.setPosts(JSON.parse(text));
+          lsSet(GH_LAST_SYNC_KEY, String(Date.now()));
+          renderLastSync();
+          renderAdminList();
+          var msg =
+            '同步成功' +
+            (uploadCount
+              ? '（上传 ' + uploadCount + ' 张图，并更新 posts.json）'
+              : '（已更新 posts.json）') +
+            '。约 1 分钟后刷新页面可见。';
+          setSyncStatus(msg, 'success');
+        })
+        .catch(function (err) {
+          if (err && err.status) {
+            setSyncStatus(mapGhError(err.status, err.body || err.json), 'error');
+          } else {
+            setSyncStatus(
+              '网络或浏览器错误：' +
+                (err && err.message ? err.message : String(err)),
+              'error'
+            );
+          }
+        })
+        .then(function () {
+          syncing = false;
+          updateSyncButtonState();
+        });
+    }, 30);
   }
 
   /* —— Wire events —— */
