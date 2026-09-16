@@ -95,6 +95,17 @@
     </div>
   </div>
 
+
+  <!-- 图片灯箱（微信朋友圈风格） -->
+  <div class="lightbox hidden" id="lightbox" role="dialog" aria-modal="true" aria-label="图片预览">
+    <div class="lightbox-backdrop" aria-hidden="true"></div>
+    <button type="button" class="lightbox-close" id="lightboxClose" aria-label="关闭">×</button>
+    <button type="button" class="lightbox-nav lightbox-prev hidden" id="lightboxPrev" aria-label="上一张">‹</button>
+    <img class="lightbox-img" id="lightboxImg" alt="预览图" />
+    <button type="button" class="lightbox-nav lightbox-next hidden" id="lightboxNext" aria-label="下一张">›</button>
+    <div class="lightbox-counter hidden" id="lightboxCounter"></div>
+  </div>
+
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>

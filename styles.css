@@ -152,12 +152,92 @@ body {
   font-size: 26px;
 }
 
-.post-avatar {
-  width: 42px;
-  height: 42px;
+/* 左侧艺术时间（替代头像槽） */
+.post-time-art {
+  width: 46px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 2px;
+  text-align: center;
+  line-height: 1.15;
+  user-select: none;
+  color: var(--text);
+}
+
+.post-time-art .time-value {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  background: linear-gradient(160deg, #2c3e50 0%, #576b95 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.post-time-art .time-unit {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  max-width: 46px;
+  word-break: break-all;
+  line-height: 1.25;
+}
+
+.post-time-art.kind-just .time-just {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  writing-mode: horizontal-tb;
+  background: linear-gradient(160deg, #07c160 0%, #576b95 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  padding-top: 6px;
+}
+
+.post-time-art.kind-date .time-value {
+  font-size: 18px;
+}
+
+.post-name.post-location {
+  color: var(--text-link);
+  font-weight: 600;
   font-size: 15px;
-  border: none;
-  box-shadow: none;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.post-name.post-location::before {
+  content: "📍";
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.post-name.post-location.muted {
+  color: var(--text-secondary);
+  font-weight: 400;
+  font-size: 13px;
+}
+
+.post-name.post-location.muted::before {
+  opacity: 0.55;
+  font-size: 11px;
+}
+
+.post-meta-spacer {
+  flex: 1;
 }
 
 /* —— Feed —— */
@@ -668,5 +748,137 @@ body {
     border-radius: 12px;
     overflow: hidden;
     min-height: calc(100dvh - 48px);
+  }
+}
+
+
+/* —— Lightbox（朋友圈大图预览） —— */
+body.lightbox-open {
+  overflow: hidden;
+  touch-action: none;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: var(--max-w);
+  margin: 0 auto;
+  background: rgba(0, 0, 0, 0.92);
+  animation: fadeIn 0.2s ease;
+  touch-action: none;
+}
+
+.lightbox.hidden {
+  display: none !important;
+}
+
+.lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.lightbox-img {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: auto;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top, 0px));
+  right: 12px;
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.lightbox-close:active {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 40px;
+  height: 56px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.lightbox-nav:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.lightbox-prev {
+  left: 6px;
+}
+
+.lightbox-next {
+  right: 6px;
+}
+
+.lightbox-counter {
+  position: absolute;
+  bottom: max(18px, calc(12px + env(safe-area-inset-bottom, 0px)));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+.img-grid .img-cell img {
+  cursor: zoom-in;
+}
+
+@media (min-width: 560px) {
+  .lightbox {
+    border-radius: 12px;
+    top: 24px;
+    bottom: 24px;
+    left: 50%;
+    right: auto;
+    width: min(var(--max-w), calc(100vw - 32px));
+    margin: 0;
+    transform: translateX(-50%);
   }
 }

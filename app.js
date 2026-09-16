@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  const STORAGE_KEY = 'moments_feed_v1';
+  const STORAGE_KEY = 'moments_feed_v2';
   const D = window.MomentsData;
   const ME = D.ME;
 
@@ -29,12 +29,26 @@
     btnCommentCancel: document.getElementById('btnCommentCancel'),
     btnCommentSubmit: document.getElementById('btnCommentSubmit'),
     cover: document.getElementById('cover'),
+    lightbox: document.getElementById('lightbox'),
+    lightboxImg: document.getElementById('lightboxImg'),
+    lightboxClose: document.getElementById('lightboxClose'),
+    lightboxPrev: document.getElementById('lightboxPrev'),
+    lightboxNext: document.getElementById('lightboxNext'),
+    lightboxCounter: document.getElementById('lightboxCounter'),
   };
 
   let posts = [];
   let selectedPhotos = new Set();
   let commentTargetId = null;
   let coverHue = 200;
+
+  /* lightbox state */
+  let lbImages = [];
+  let lbIndex = 0;
+  let lbOpen = false;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchDeltaX = 0;
 
   /* —— Storage —— */
   function load() {
@@ -72,19 +86,31 @@
 
   /* —— Time format —— */
   function formatTime(ts) {
+    const parts = formatTimeParts(ts);
+    if (parts.unit) return parts.value + parts.unit;
+    return parts.value;
+  }
+
+  /** 拆成主数字/文案 + 副标签，供左侧艺术时间槽使用 */
+  function formatTimeParts(ts) {
     const now = Date.now();
     const diff = Math.max(0, now - ts);
     const m = Math.floor(diff / 60000);
-    if (m < 1) return '刚刚';
-    if (m < 60) return m + '分钟前';
+    if (m < 1) return { value: '刚刚', unit: '', kind: 'just' };
+    if (m < 60) return { value: String(m), unit: '分钟前', kind: 'rel' };
     const h = Math.floor(m / 60);
-    if (h < 24) return h + '小时前';
+    if (h < 24) return { value: String(h), unit: '小时前', kind: 'rel' };
     const d = Math.floor(h / 24);
-    if (d < 7) return d + '天前';
+    if (d < 7) return { value: String(d), unit: '天前', kind: 'rel' };
     const date = new Date(ts);
     const mm = date.getMonth() + 1;
     const dd = date.getDate();
-    return mm + '月' + dd + '日';
+    const yyyy = date.getFullYear();
+    const thisYear = new Date().getFullYear();
+    if (yyyy !== thisYear) {
+      return { value: yyyy + '/' + mm, unit: dd + '日', kind: 'date' };
+    }
+    return { value: String(mm), unit: '月' + dd + '日', kind: 'date' };
   }
 
   function escapeHtml(s) {
@@ -133,8 +159,39 @@
     els.feed.innerHTML = posts.map(renderPost).join('');
   }
 
+  function renderArtisticTime(ts) {
+    const parts = formatTimeParts(ts);
+    const title = formatTime(ts);
+    if (parts.kind === 'just') {
+      return (
+        '<div class="post-time-art kind-just" title="' +
+        escapeHtml(title) +
+        '" aria-label="' +
+        escapeHtml(title) +
+        '">' +
+        '<span class="time-just">' +
+        escapeHtml(parts.value) +
+        '</span></div>'
+      );
+    }
+    return (
+      '<div class="post-time-art kind-' +
+      escapeHtml(parts.kind) +
+      '" title="' +
+      escapeHtml(title) +
+      '" aria-label="' +
+      escapeHtml(title) +
+      '">' +
+      '<span class="time-value">' +
+      escapeHtml(parts.value) +
+      '</span>' +
+      '<span class="time-unit">' +
+      escapeHtml(parts.unit) +
+      '</span></div>'
+    );
+  }
+
   function renderPost(post) {
-    const author = post.author || { name: '匿名', initial: '?' };
     const n = (post.images && post.images.length) || 0;
     const gridClass = n === 0 ? '' : 'n' + Math.min(n, 9);
     const imagesHtml =
@@ -144,11 +201,16 @@
           '">' +
           post.images
             .slice(0, 9)
-            .map(function (src) {
+            .map(function (src, idx) {
               return (
-                '<div class="img-cell"><img src="' +
+                '<div class="img-cell">' +
+                '<img src="' +
                 escapeHtml(src) +
-                '" alt="" loading="lazy" /></div>'
+                '" alt="" loading="lazy" data-post-id="' +
+                escapeHtml(post.id) +
+                '" data-img-index="' +
+                idx +
+                '" /></div>'
               );
             })
             .join('') +
@@ -188,32 +250,24 @@
 
     const likedClass = post.likedByMe ? ' liked' : '';
     const heart = post.likedByMe ? '♥' : '♡';
-    const loc = post.location
-      ? '<span class="post-loc">' + escapeHtml(post.location) + '</span>'
-      : '';
+
+    const locRaw = (post.location || '').trim();
+    const nameHtml = locRaw
+      ? '<div class="post-name post-location">' + escapeHtml(locRaw) + '</div>'
+      : '<div class="post-name post-location muted">未标注地点</div>';
 
     return (
       '<article class="post" data-id="' +
       escapeHtml(post.id) +
       '">' +
       '<div class="post-header">' +
-      '<div class="avatar post-avatar" style="' +
-      D.avatarStyle(author.name) +
-      '">' +
-      escapeHtml(author.initial || D.avatarInitial(author.name)) +
-      '</div>' +
+      renderArtisticTime(post.createdAt) +
       '<div class="post-body">' +
-      '<div class="post-name">' +
-      escapeHtml(author.name) +
-      '</div>' +
+      nameHtml +
       (post.text ? '<div class="post-text">' + escapeHtml(post.text) + '</div>' : '') +
       imagesHtml +
       '<div class="post-meta">' +
-      '<div class="post-time-loc"><span>' +
-      formatTime(post.createdAt) +
-      '</span>' +
-      loc +
-      '</div>' +
+      '<div class="post-meta-spacer" aria-hidden="true"></div>' +
       '<div class="post-actions">' +
       '<button type="button" class="action-btn' +
       likedClass +
@@ -225,6 +279,54 @@
       social +
       '</div></div></article>'
     );
+  }
+
+  /* —— Lightbox —— */
+  function openLightbox(postId, index) {
+    const post = findPost(postId);
+    if (!post || !post.images || !post.images.length) return;
+    lbImages = post.images.slice(0, 9);
+    lbIndex = Math.max(0, Math.min(index | 0, lbImages.length - 1));
+    lbOpen = true;
+    updateLightboxUI();
+    els.lightbox.classList.remove('hidden');
+    document.body.classList.add('lightbox-open');
+  }
+
+  function closeLightbox() {
+    if (!lbOpen) return;
+    lbOpen = false;
+    els.lightbox.classList.add('hidden');
+    document.body.classList.remove('lightbox-open');
+    lbImages = [];
+    lbIndex = 0;
+    els.lightboxImg.removeAttribute('src');
+  }
+
+  function showLightboxIndex(i) {
+    if (!lbImages.length) return;
+    lbIndex = ((i % lbImages.length) + lbImages.length) % lbImages.length;
+    updateLightboxUI();
+  }
+
+  function lightboxPrev() {
+    if (lbImages.length <= 1) return;
+    showLightboxIndex(lbIndex - 1);
+  }
+
+  function lightboxNext() {
+    if (lbImages.length <= 1) return;
+    showLightboxIndex(lbIndex + 1);
+  }
+
+  function updateLightboxUI() {
+    const src = lbImages[lbIndex];
+    els.lightboxImg.src = src;
+    const multi = lbImages.length > 1;
+    els.lightboxCounter.textContent = multi ? lbIndex + 1 + ' / ' + lbImages.length : '';
+    els.lightboxCounter.classList.toggle('hidden', !multi);
+    els.lightboxPrev.classList.toggle('hidden', !multi);
+    els.lightboxNext.classList.toggle('hidden', !multi);
   }
 
   /* —— Interactions —— */
@@ -367,6 +469,12 @@
 
   /* —— Events —— */
   els.feed.addEventListener('click', function (e) {
+    const img = e.target.closest('.img-grid img[data-post-id]');
+    if (img) {
+      e.preventDefault();
+      openLightbox(img.getAttribute('data-post-id'), parseInt(img.getAttribute('data-img-index'), 10) || 0);
+      return;
+    }
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     const article = btn.closest('.post');
@@ -424,7 +532,82 @@
     });
   }
 
+  /* lightbox events */
+  if (els.lightbox) {
+    els.lightboxClose.addEventListener('click', function (e) {
+      e.stopPropagation();
+      closeLightbox();
+    });
+    els.lightboxPrev.addEventListener('click', function (e) {
+      e.stopPropagation();
+      lightboxPrev();
+    });
+    els.lightboxNext.addEventListener('click', function (e) {
+      e.stopPropagation();
+      lightboxNext();
+    });
+    els.lightbox.addEventListener('click', function (e) {
+      if (e.target === els.lightbox || e.target.classList.contains('lightbox-backdrop')) {
+        closeLightbox();
+      }
+    });
+    els.lightboxImg.addEventListener('click', function (e) {
+      e.stopPropagation();
+    });
+
+    els.lightbox.addEventListener(
+      'touchstart',
+      function (e) {
+        if (!lbOpen || e.touches.length !== 1) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchDeltaX = 0;
+      },
+      { passive: true }
+    );
+    els.lightbox.addEventListener(
+      'touchmove',
+      function (e) {
+        if (!lbOpen || e.touches.length !== 1) return;
+        touchDeltaX = e.touches[0].clientX - touchStartX;
+        const dy = e.touches[0].clientY - touchStartY;
+        if (Math.abs(touchDeltaX) > Math.abs(dy) && Math.abs(touchDeltaX) > 10) {
+          e.preventDefault();
+        }
+      },
+      { passive: false }
+    );
+    els.lightbox.addEventListener(
+      'touchend',
+      function () {
+        if (!lbOpen || lbImages.length <= 1) return;
+        if (Math.abs(touchDeltaX) > 50) {
+          if (touchDeltaX < 0) lightboxNext();
+          else lightboxPrev();
+        }
+        touchDeltaX = 0;
+      },
+      { passive: true }
+    );
+  }
+
   document.addEventListener('keydown', function (e) {
+    if (lbOpen) {
+      if (e.key === 'Escape') {
+        closeLightbox();
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        lightboxPrev();
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        lightboxNext();
+        return;
+      }
+    }
     if (e.key === 'Escape') {
       if (!els.composeMask.classList.contains('hidden')) closeCompose();
       if (!els.commentMask.classList.contains('hidden')) closeComment();

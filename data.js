@@ -114,7 +114,7 @@
       author: { name: '小明', initial: '明' },
       text: '第一次见面\n2013年7月30号 我的阳历生日\n特别的日子遇见你即是缘分的开始\n看看小伙伴们开心的表情\n86路的剧情由我们书写',
       images: ['assets/first-meeting.jpg'],
-      location: '',
+      location: '大学城 · 86路车站',
       likes: ['阿花', '阿杰', '喵呜酱', '小雨'],
       likedByMe: false,
       comments: [],
@@ -158,7 +158,7 @@
       author: { name: '喵呜酱', initial: '喵' },
       text: '我家主子又在窗台晒太阳了，摆出一副「朕很忙」的表情🐈',
       images: [svgPlaceholder({ c1: '#a6c1ee', c2: '#fbc2eb', emoji: '🐱' })],
-      location: '',
+      location: '家里窗台',
       likes: ['小明', '阿花'],
       likedByMe: true,
       comments: [
@@ -232,7 +232,7 @@
         svgPlaceholder({ c1: '#ff9a9e', c2: '#fecfef', emoji: '🌈' }),
         svgPlaceholder({ c1: '#84fab0', c2: '#8fd3f4', emoji: '🍃' }),
       ],
-      location: '',
+      location: '家里书桌',
       likes: ['阿花', '阿杰', '喵呜酱', '小雨', 'Cathy', '老王', '阿东'],
       likedByMe: false,
       comments: [
