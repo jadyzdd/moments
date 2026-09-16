@@ -110,6 +110,17 @@
   /** 示例动态（相对时间戳，加载时换算） */
   const SEED_POSTS = [
     {
+      id: 'seed-first-meeting',
+      author: { name: '小明', initial: '明' },
+      text: '第一次见面\n2013年7月30号 我的阳历生日\n特别的日子遇见你即是缘分的开始\n看看小伙伴们开心的表情\n86路的剧情由我们书写',
+      images: ['assets/first-meeting.jpg'],
+      location: '',
+      likes: ['阿花', '阿杰', '喵呜酱', '小雨'],
+      likedByMe: false,
+      comments: [],
+      minutesAgo: 5,
+    },
+    {
       id: 'seed-1',
       author: { name: '阿花', initial: '花' },
       text: '周末终于把欠了很久的书看完了📖\n《人间草木》里那句「一花一世界」又读哭了。\n雨天配茶，刚刚好。',
