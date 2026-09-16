@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1a1a" />
+  <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
+  <title>朋友圈</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- 顶部封面 -->
+    <header class="cover" id="cover">
+      <div class="cover-bg" aria-hidden="true"></div>
+      <button type="button" class="cover-camera" title="更换封面" aria-label="更换封面">📷</button>
+      <div class="profile">
+        <div class="profile-text">
+          <h1 class="nickname" id="nickname">小明</h1>
+          <p class="bio" id="bio">记录生活的点滴 · 今天也要开心呀</p>
+        </div>
+        <div class="avatar profile-avatar" id="myAvatar" title="我的头像">明</div>
+      </div>
+    </header>
+
+    <!-- 动态流 -->
+    <main class="feed" id="feed" aria-live="polite"></main>
+
+    <!-- 空状态 -->
+    <div class="empty-state hidden" id="emptyState">
+      <div class="empty-icon">🍃</div>
+      <p>还没有动态</p>
+      <p class="empty-hint">点右下角「发布」分享第一条，或恢复示例数据</p>
+      <button type="button" class="btn-secondary" id="btnRestoreEmpty">恢复示例</button>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+      <button type="button" class="footer-link" id="btnClear">清空本地数据</button>
+      <span class="footer-sep">·</span>
+      <button type="button" class="footer-link" id="btnRestore">恢复示例</button>
+    </footer>
+
+    <!-- 悬浮发布 -->
+    <button type="button" class="fab" id="btnPublish" aria-label="发布">
+      <span class="fab-icon">+</span>
+      <span class="fab-label">发布</span>
+    </button>
+  </div>
+
+  <!-- 发布弹层 -->
+  <div class="modal-mask hidden" id="composeMask" role="dialog" aria-modal="true" aria-labelledby="composeTitle">
+    <div class="modal compose-modal">
+      <div class="modal-header">
+        <button type="button" class="modal-cancel" id="btnComposeCancel">取消</button>
+        <h2 class="modal-title" id="composeTitle">发表动态</h2>
+        <button type="button" class="modal-ok" id="btnComposeSubmit" disabled>发表</button>
+      </div>
+      <textarea
+        id="composeText"
+        class="compose-text"
+        placeholder="这一刻的想法…"
+        maxlength="500"
+        rows="5"
+      ></textarea>
+      <div class="compose-photos" id="composePhotos">
+        <!-- fake photo chips -->
+      </div>
+      <p class="compose-tip">点击色块添加「假照片」（演示用），再点可取消</p>
+      <div class="compose-meta">
+        <label class="compose-loc">
+          <span>📍</span>
+          <input type="text" id="composeLocation" placeholder="所在位置（可选）" maxlength="40" />
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- 评论弹层（移动端友好） -->
+  <div class="modal-mask hidden" id="commentMask" role="dialog" aria-modal="true">
+    <div class="modal comment-modal">
+      <div class="modal-header">
+        <button type="button" class="modal-cancel" id="btnCommentCancel">取消</button>
+        <h2 class="modal-title">评论</h2>
+        <button type="button" class="modal-ok" id="btnCommentSubmit" disabled>发送</button>
+      </div>
+      <textarea
+        id="commentText"
+        class="compose-text"
+        placeholder="友善发言…"
+        maxlength="200"
+        rows="3"
+      ></textarea>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
