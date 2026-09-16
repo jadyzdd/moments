@@ -1586,12 +1586,14 @@ body.admin-open {
 }
 
 .gh-sync-status {
-  font-size: 12px;
-  line-height: 1.5;
-  margin-top: 6px;
+  margin: 8px 0 0;
   padding: 8px 10px;
-  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.45;
   word-break: break-word;
+  border-radius: 8px;
+  background: #f0f0f0;
+  color: #333;
 }
 
 .gh-sync-status.pending {
@@ -1628,4 +1630,4 @@ body.admin-open {
   flex-wrap: wrap;
   margin: 0;
 }
-.gh-last-sync { display: none; }
+/* last sync visible again */

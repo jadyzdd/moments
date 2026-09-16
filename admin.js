@@ -694,7 +694,9 @@
   function updateSyncButtonState() {
     var btn = $('ghSyncBtn');
     if (!btn) return;
-    btn.disabled = !getGhToken() || syncing;
+    // Keep clickable so missing-token still shows status feedback
+    btn.disabled = !!syncing;
+    btn.textContent = syncing ? '同步中…' : '同步';
   }
 
   function renderLastSync() {
@@ -734,8 +736,14 @@
     if (!el) return;
     el.textContent = msg || '';
     el.className = 'gh-sync-status' + (kind ? ' ' + kind : '');
-    if (!msg) el.classList.add('hidden');
-    else el.classList.remove('hidden');
+    if (!msg) {
+      el.classList.add('hidden');
+      return;
+    }
+    el.classList.remove('hidden');
+    try {
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } catch (e) {}
   }
 
   function utf8ToBase64(str) {
@@ -970,10 +978,11 @@
 
   function syncToGitHub() {
     if (syncing) return;
+    setSyncStatus('准备同步…', 'pending');
     persistGhFields();
     var token = getGhToken();
     if (!token) {
-      setSyncStatus('请先填写并保存 GitHub Token', 'error');
+      setSyncStatus('还没有 Token，请先点「保存」写入后再同步', 'error');
       updateSyncButtonState();
       return;
     }
@@ -1071,18 +1080,11 @@
         lsSet(GH_LAST_SYNC_KEY, String(now));
         renderLastSync();
         renderAdminList();
-        var html =
-          '同步成功！' +
-          (uploadCount
-            ? '已上传 ' + uploadCount + ' 张到 ' + UPLOADS_DIR + '/，并更新 posts.json。'
-            : '已更新 posts.json。') +
-          ' GitHub Pages 通常约 1 分钟后生效，请刷新访客页面查看。';
-        if (result && result.commit && result.commit.html_url) {
-          html += ' 提交：' + result.commit.html_url;
-        } else if (result && result.content && result.content.html_url) {
-          html += ' 文件：' + result.content.html_url;
-        }
-        setSyncStatus(html, 'success');
+        var msg =
+          '同步成功' +
+          (uploadCount ? '（上传 ' + uploadCount + ' 张图，并更新 posts.json）' : '（已更新 posts.json）') +
+          '。约 1 分钟后刷新页面可见。';
+        setSyncStatus(msg, 'success');
       })
       .catch(function (err) {
         if (err && err.status) {
