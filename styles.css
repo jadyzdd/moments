@@ -1631,3 +1631,13 @@ body.admin-open {
   margin: 0;
 }
 /* last sync visible again */
+
+
+.gh-token-state {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+}
+.gh-token-state.missing {
+  color: #c0392b;
+}

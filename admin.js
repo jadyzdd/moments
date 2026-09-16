@@ -648,6 +648,19 @@
     return token.slice(0, 4) + '••••••••' + token.slice(-4);
   }
 
+  function renderTokenState() {
+    var el = $('ghTokenState');
+    if (!el) return;
+    var token = getGhToken();
+    if (token) {
+      el.textContent = '令牌：已保存在本机（' + maskToken(token) + '）';
+      el.classList.remove('missing');
+    } else {
+      el.textContent = '令牌：未保存（点「保存令牌」粘贴一次即可）';
+      el.classList.add('missing');
+    }
+  }
+
   function loadGhForm() {
     var owner = $('ghOwner');
     var repo = $('ghRepo');
@@ -655,6 +668,7 @@
     if (owner) owner.value = lsGet(GH_OWNER_KEY, DEFAULT_OWNER);
     if (repo) repo.value = lsGet(GH_REPO_KEY, DEFAULT_REPO);
     if (branch) branch.value = lsGet(GH_BRANCH_KEY, DEFAULT_BRANCH);
+    renderTokenState();
     updateSyncButtonState();
   }
 
@@ -681,14 +695,16 @@
     }
     lsSet(GH_TOKEN_KEY, typed);
     persistGhFields();
-    setSyncStatus('Token 已保存到本机', 'success');
+    renderTokenState();
+    setSyncStatus('令牌已保存到本机', 'success');
   }
 
   function clearGhToken() {
-    if (!confirm('清除本机保存的 GitHub Token？')) return;
+    if (!confirm('确定清除本机保存的 GitHub 令牌？\n（不会删除仓库里的内容，只是这台浏览器不能再同步，直到重新保存令牌）')) return;
     lsSet(GH_TOKEN_KEY, '');
+    renderTokenState();
     updateSyncButtonState();
-    setSyncStatus('已清除 Token', '');
+    setSyncStatus('已清除本机令牌', '');
   }
 
   function updateSyncButtonState() {
