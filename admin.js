@@ -19,10 +19,13 @@
   var DEFAULT_REPO = 'moments';
   var DEFAULT_BRANCH = 'main';
 
-  /** Soft limit for posts.json UTF-8 size before sync (GitHub Contents API practical) */
-  var MAX_SYNC_BYTES = 900 * 1024;
+  /** Soft limit for posts.json after images are extracted to files */
+  var MAX_POSTS_JSON_BYTES = 2 * 1024 * 1024;
+  /** Warn / block sync for a single uploaded image file */
+  var MAX_FILE_BYTES = 5 * 1024 * 1024;
   var IMG_MAX_EDGE = 1600;
   var IMG_JPEG_QUALITY = 0.82;
+  var UPLOADS_DIR = 'assets/uploads';
 
   var App = null;
   var editImages = []; // data URLs currently in editor
@@ -384,7 +387,7 @@
   function setUploadTip(msg, isErr) {
     var tip = $('adminUploadTip');
     if (!tip) return;
-    tip.textContent = msg || '支持一次选多张（最多 9 张），手机也可从相册选图；保存后再同步到 GitHub。';
+    tip.textContent = msg || '支持一次选多张（最多 9 张），手机也可从相册选图；本机可先预览（data URL）。点「同步到 GitHub」后会上传到 assets/uploads/ 并写入路径。';
     tip.style.color = isErr ? '#e64340' : '';
   }
 
@@ -415,6 +418,18 @@
       var errors = [];
       results.forEach(function (r) {
         if (r.ok && r.url && editImages.length < 9) {
+          if (isRasterDataUrl(r.url)) {
+            var parsed = parseDataUrl(r.url);
+            if (parsed && estimateBase64Bytes(parsed.base64) > MAX_FILE_BYTES) {
+              errors.push(
+                (r.name || '图片') +
+                  ' 压缩后仍超过 ' +
+                  formatBytes(MAX_FILE_BYTES) +
+                  '，已跳过'
+              );
+              return;
+            }
+          }
           editImages.push(r.url);
           added++;
         } else if (!r.ok) {
@@ -734,9 +749,9 @@
     return btoa(unescape(encodeURIComponent(str)));
   }
 
-  function buildPostsJsonText() {
-    var posts = sortNewest(App.getPosts());
-    return JSON.stringify(posts, null, 2) + '\n';
+  function buildPostsJsonText(posts) {
+    var list = posts != null ? posts : sortNewest(App.getPosts());
+    return JSON.stringify(sortNewest(list), null, 2) + '\n';
   }
 
   function mapGhError(status, body) {
@@ -775,6 +790,191 @@
     );
   }
 
+  function isRasterDataUrl(s) {
+    return (
+      typeof s === 'string' &&
+      /^data:image\/(jpeg|jpg|png|webp|gif);base64,/i.test(s)
+    );
+  }
+
+  function parseDataUrl(dataUrl) {
+    var m = /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(dataUrl);
+    if (!m) return null;
+    return { mime: m[1].toLowerCase(), base64: m[2].replace(/\s+/g, '') };
+  }
+
+  function extFromMime(mime) {
+    if (mime === 'image/png') return 'png';
+    if (mime === 'image/webp') return 'webp';
+    if (mime === 'image/gif') return 'gif';
+    return 'jpg';
+  }
+
+  function shortId() {
+    try {
+      if (window.crypto && crypto.getRandomValues) {
+        var buf = new Uint8Array(4);
+        crypto.getRandomValues(buf);
+        var n =
+          (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
+        return (n >>> 0).toString(36).slice(0, 6);
+      }
+    } catch (e) {}
+    return Math.random().toString(36).slice(2, 8);
+  }
+
+  function yyyymmddLocal(d) {
+    d = d || new Date();
+    return (
+      d.getFullYear() +
+      pad2(d.getMonth() + 1) +
+      pad2(d.getDate())
+    );
+  }
+
+  function makeUploadFilename(mime) {
+    return yyyymmddLocal() + '-' + shortId() + '.' + extFromMime(mime);
+  }
+
+  function estimateBase64Bytes(b64) {
+    if (!b64) return 0;
+    var padding = 0;
+    if (b64.endsWith('==')) padding = 2;
+    else if (b64.endsWith('=')) padding = 1;
+    return Math.max(0, Math.floor((b64.length * 3) / 4) - padding);
+  }
+
+  function ghApiHeaders(token) {
+    return {
+      Authorization: 'Bearer ' + token,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    };
+  }
+
+  function ghContentsApi(owner, repo, relPath) {
+    var parts = String(relPath)
+      .split('/')
+      .filter(Boolean)
+      .map(encodeURIComponent)
+      .join('/');
+    return (
+      'https://api.github.com/repos/' +
+      encodeURIComponent(owner) +
+      '/' +
+      encodeURIComponent(repo) +
+      '/contents/' +
+      parts
+    );
+  }
+
+  function ghGetFileSha(apiUrl, branch, headers) {
+    return fetch(apiUrl + '?ref=' + encodeURIComponent(branch), {
+      method: 'GET',
+      headers: headers,
+    }).then(function (res) {
+      if (res.status === 404) return null;
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          throw { status: res.status, body: t };
+        });
+      }
+      return res.json().then(function (j) {
+        return j.sha || null;
+      });
+    });
+  }
+
+  function ghPutContent(apiUrl, branch, headers, message, contentB64, sha) {
+    var body = {
+      message: message,
+      content: contentB64,
+      branch: branch,
+    };
+    if (sha) body.sha = sha;
+    return fetch(apiUrl, {
+      method: 'PUT',
+      headers: headers,
+      body: JSON.stringify(body),
+    }).then(function (res) {
+      return res.text().then(function (t) {
+        var parsed = null;
+        try {
+          parsed = JSON.parse(t);
+        } catch (e) {}
+        if (!res.ok) {
+          throw { status: res.status, body: t, json: parsed };
+        }
+        return parsed;
+      });
+    });
+  }
+
+  /**
+   * Walk posts.images: decode raster data URLs into upload jobs,
+   * replace with assets/uploads/{YYYYMMDD}-{id}.ext; leave paths / SVG alone.
+   */
+  function preparePostsForSync(posts) {
+    var cloned = JSON.parse(JSON.stringify(posts));
+    var uploads = [];
+    var oversized = [];
+    var usedNames = {};
+
+    cloned.forEach(function (post) {
+      if (!post || !Array.isArray(post.images)) return;
+      post.images = post.images.map(function (img) {
+        if (!isRasterDataUrl(img)) return img;
+        var parsed = parseDataUrl(img);
+        if (!parsed) return img;
+        var size = estimateBase64Bytes(parsed.base64);
+        if (size > MAX_FILE_BYTES) {
+          oversized.push({ size: size });
+          return img;
+        }
+        var filename = makeUploadFilename(parsed.mime);
+        while (usedNames[filename]) {
+          filename = makeUploadFilename(parsed.mime);
+        }
+        usedNames[filename] = true;
+        var rel = UPLOADS_DIR + '/' + filename;
+        uploads.push({
+          path: rel,
+          content: parsed.base64,
+          size: size,
+          mime: parsed.mime,
+        });
+        return rel;
+      });
+    });
+
+    return { posts: cloned, uploads: uploads, oversized: oversized };
+  }
+
+  function uploadFilesSequentially(uploads, owner, repo, branch, headers, onProgress) {
+    var i = 0;
+    function next(lastResult) {
+      if (i >= uploads.length) return Promise.resolve(lastResult);
+      var item = uploads[i];
+      i += 1;
+      if (onProgress) onProgress(i, uploads.length, item);
+      var apiUrl = ghContentsApi(owner, repo, item.path);
+      return ghGetFileSha(apiUrl, branch, headers).then(function (sha) {
+        return ghPutContent(
+          apiUrl,
+          branch,
+          headers,
+          'Add photo ' + item.path + ' from Moments admin',
+          item.content,
+          sha
+        ).then(function (result) {
+          return next(result);
+        });
+      });
+    }
+    return next(null);
+  }
+
   function syncToGitHub() {
     if (syncing) return;
     persistGhFields();
@@ -787,15 +987,30 @@
     var owner = lsGet(GH_OWNER_KEY, DEFAULT_OWNER);
     var repo = lsGet(GH_REPO_KEY, DEFAULT_REPO);
     var branch = lsGet(GH_BRANCH_KEY, DEFAULT_BRANCH);
-    var text = buildPostsJsonText();
-    var bytes = utf8ByteLength(text);
-    if (bytes > MAX_SYNC_BYTES) {
+
+    var prepared = preparePostsForSync(App.getPosts());
+    if (prepared.oversized.length) {
+      var biggest = prepared.oversized[0].size;
       setSyncStatus(
-        '内容过大（约 ' +
+        '有图片超过单文件上限 ' +
+          formatBytes(MAX_FILE_BYTES) +
+          '（约 ' +
+          formatBytes(biggest) +
+          '）。请先压缩或换较小的图后再同步。',
+        'error'
+      );
+      return;
+    }
+
+    var text = buildPostsJsonText(prepared.posts);
+    var bytes = utf8ByteLength(text);
+    if (bytes > MAX_POSTS_JSON_BYTES) {
+      setSyncStatus(
+        'posts.json 过大（约 ' +
           formatBytes(bytes) +
           '），超过建议上限 ' +
-          formatBytes(MAX_SYNC_BYTES) +
-          '。请减少含 data URL 的大图，或改用 assets/ 相对路径后再同步。',
+          formatBytes(MAX_POSTS_JSON_BYTES) +
+          '。请减少动态或去掉仍嵌入的 data URL 后再同步。',
         'error'
       );
       return;
@@ -803,79 +1018,74 @@
 
     syncing = true;
     updateSyncButtonState();
-    setSyncStatus('正在同步到 GitHub…（' + formatBytes(bytes) + '）', 'pending');
+    var uploadCount = prepared.uploads.length;
+    if (uploadCount) {
+      setSyncStatus(
+        '正在上传 ' + uploadCount + ' 张图片到 ' + UPLOADS_DIR + '/…',
+        'pending'
+      );
+    } else {
+      setSyncStatus(
+        '正在同步 posts.json…（' + formatBytes(bytes) + '）',
+        'pending'
+      );
+    }
 
-    var apiBase =
-      'https://api.github.com/repos/' +
-      encodeURIComponent(owner) +
-      '/' +
-      encodeURIComponent(repo) +
-      '/contents/posts.json';
-    var headers = {
-      Authorization: 'Bearer ' + token,
-      Accept: 'application/vnd.github+json',
-      'Content-Type': 'application/json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    };
+    var headers = ghApiHeaders(token);
 
-    fetch(apiBase + '?ref=' + encodeURIComponent(branch), {
-      method: 'GET',
-      headers: headers,
-    })
-      .then(function (res) {
-        if (res.status === 404) {
-          return { sha: null };
-        }
-        if (!res.ok) {
-          return res.text().then(function (t) {
-            throw { status: res.status, body: t };
-          });
-        }
-        return res.json().then(function (j) {
-          return { sha: j.sha || null };
-        });
-      })
-      .then(function (info) {
-        var body = {
-          message: 'Sync posts.json from Moments admin',
-          content: utf8ToBase64(text),
-          branch: branch,
-        };
-        if (info.sha) body.sha = info.sha;
-        return fetch(apiBase, {
-          method: 'PUT',
-          headers: headers,
-          body: JSON.stringify(body),
-        }).then(function (res) {
-          return res.text().then(function (t) {
-            var parsed = null;
-            try {
-              parsed = JSON.parse(t);
-            } catch (e) {}
-            if (!res.ok) {
-              throw { status: res.status, body: t, json: parsed };
-            }
-            return parsed;
-          });
+    uploadFilesSequentially(
+      prepared.uploads,
+      owner,
+      repo,
+      branch,
+      headers,
+      function (done, total, item) {
+        setSyncStatus(
+          '正在上传图片 ' +
+            done +
+            '/' +
+            total +
+            '：' +
+            item.path +
+            '（' +
+            formatBytes(item.size) +
+            '）',
+          'pending'
+        );
+      }
+    )
+      .then(function () {
+        setSyncStatus(
+          '图片已上传，正在更新 posts.json…（' + formatBytes(bytes) + '）',
+          'pending'
+        );
+        var apiBase = ghContentsApi(owner, repo, 'posts.json');
+        return ghGetFileSha(apiBase, branch, headers).then(function (sha) {
+          return ghPutContent(
+            apiBase,
+            branch,
+            headers,
+            'Sync posts.json from Moments admin',
+            utf8ToBase64(text),
+            sha
+          );
         });
       })
       .then(function (result) {
-        // Ensure localStorage matches what was pushed
+        // Local feed should match what was pushed (paths, not data URLs)
         App.setPosts(JSON.parse(text));
         var now = Date.now();
         lsSet(GH_LAST_SYNC_KEY, String(now));
         renderLastSync();
         renderAdminList();
-        var commitUrl =
-          result &&
-          result.commit &&
-          (result.commit.html_url || (result.commit.sha ? null : null));
         var html =
-          '同步成功！GitHub Pages 通常约 1 分钟后生效，请刷新访客页面查看。';
+          '同步成功！' +
+          (uploadCount
+            ? '已上传 ' + uploadCount + ' 张到 ' + UPLOADS_DIR + '/，并更新 posts.json。'
+            : '已更新 posts.json。') +
+          ' GitHub Pages 通常约 1 分钟后生效，请刷新访客页面查看。';
         if (result && result.commit && result.commit.html_url) {
-          html +=
-            ' 提交：' +
-            result.commit.html_url;
+          html += ' 提交：' + result.commit.html_url;
         } else if (result && result.content && result.content.html_url) {
           html += ' 文件：' + result.content.html_url;
         }

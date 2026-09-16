@@ -11,7 +11,7 @@
 - **年月定位**：右侧「年月」入口，按有动态的年份/月份跳转到对应段落（类似微信朋友圈相册时间索引）
 - 右下角「发布」：写文字、选假照片色块、填位置
 - **本地管理面板**：密码解锁后可新建 / 编辑 / 删除动态，上传真实照片（自动压缩），修改地点与日期
-- **同步到 GitHub**：将本地动态推送到仓库 `posts.json`，Pages 访客共享同一 feed
+- **同步到 GitHub**：新照片先上传到 `assets/uploads/`，再更新 `posts.json`（只存路径），Pages 访客共享同一 feed
 - 导出 / 导入 JSON 备份
 - 数据本地持久化；可清空或恢复示例
 - 手机优先，桌面居中约手机宽度
@@ -54,13 +54,20 @@ python3 -m http.server 8080
 | 数据位置 | 动态使用 `moments_feed_v2`；同步用 Token 等存 `moments_gh_*`，全部在本浏览器 |
 | 备份 | 用「导出 JSON」备份；「导入替换」覆盖本地，「导入合并」按 `id` 合并 |
 
-管理面板支持：多图上传（压缩后以 data URL 写入 localStorage）、调整图片顺序、设置 `datetime-local` 发布时间、编辑文字与地点。保存后信息流立即刷新。右下角「发布」FAB 仍可快速发帖；管理面板是更完整的 CRUD 工具。
+管理面板支持：多图上传（压缩后暂以 data URL 写入 localStorage 便于预览）、调整图片顺序、设置 `datetime-local` 发布时间、编辑文字与地点。保存后信息流立即刷新。右下角「发布」FAB 仍可快速发帖；管理面板是更完整的 CRUD 工具。
 
-> 提示：图片以 data URL 存本地 / 同步到 `posts.json` 时体积可能很大；上传会自动缩放到最长边约 1600px、JPEG 质量约 0.82。若同步提示过大，请减少大图或改用 `assets/` 相对路径。
+> 提示：本机编辑阶段图片可以是 data URL；点「同步到 GitHub」后会解码并上传到 `assets/uploads/`，`posts.json` 只保留相对路径。上传会自动缩放到最长边约 1600px、JPEG 质量约 0.82；单张超过约 5MB 会提示。
+
+## 图片存储
+
+- 上传目录：`assets/uploads/`（例如 `assets/uploads/20260917-abc123.jpg`）
+- `posts.json` 的 `images[]` 只存相对路径（小 SVG 占位图仍可为 data URL）
+- 既有封面图 `assets/first-meeting.jpg` 保持不变
+- 同步流程：遍历动态中的 `data:image/...;base64,...` → PUT 到 `assets/uploads/` → 改写为路径 → 再 PUT 更新 `posts.json`
 
 ## 同步到 GitHub（一键）
 
-目标：你在本机管理面板改完动态 → 点「同步到 GitHub」→ 仓库根目录 `posts.json` 更新 → Pages 访客看到相同内容。
+目标：你在本机管理面板改完动态 → 点「同步到 GitHub」→ 新照片写入 `assets/uploads/`，再更新根目录 `posts.json` → Pages 访客看到相同内容。
 
 ### 1. 创建 Token（仅一次）
 
@@ -83,14 +90,15 @@ python3 -m http.server 8080
 | 角色 | 读什么 | 写什么 |
 |------|--------|--------|
 | 访客（Pages） | `posts.json` → 写入本机 localStorage 以便离线 | 仅本机点赞/评论（不同步回仓库，除非你再点同步） |
-| 管理员 | 编辑 localStorage | 「同步到 GitHub」PUT 更新 `posts.json` |
+| 管理员 | 编辑 localStorage（可含临时 data URL） | 「同步到 GitHub」先 PUT 新图到 `assets/uploads/`，再 PUT 更新 `posts.json` |
 
 ## 技术说明
 
 - 仅 HTML / CSS / JS，无 npm、无框架、无打包
 - 发布源：`posts.json`（数组，字段：`id, author, text, images[], location, likes, likedByMe, comments, createdAt`）
+- `images[]` 优先为 `assets/uploads/...` 或 `assets/...` 相对路径；同步时会把光栅 data URL 抽成文件
 - 示例种子见 `data.js`；交互见 `app.js`；管理 / 同步见 `admin.js`
-- `assets/*.jpg` 等相对路径可继续用在 `images` 中；勿把真实 Token 提交进仓库
+- 勿把真实 Token 提交进仓库
 
 ## 文件
 
@@ -101,5 +109,7 @@ python3 -m http.server 8080
 | `app.js` | 交互、本地存储、加载 `posts.json` |
 | `admin.js` | 密码门、本地管理 CRUD、同步到 GitHub |
 | `data.js` | 示例数据与占位图（fetch 失败时回退） |
-| `posts.json` | **共享动态源**（同步目标 / Pages 读取） |
+| `posts.json` | **共享动态源**（路径引用图片；同步目标 / Pages 读取） |
+| `assets/uploads/` | 管理面板同步上来的照片文件 |
+| `assets/first-meeting.jpg` | 示例封面图 |
 | `favicon.svg` | 站点图标 |

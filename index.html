@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=ym1" />
+  <link rel="stylesheet" href="styles.css?v=assets1" />
 </head>
 <body>
   <div class="app" id="app">
@@ -152,7 +152,7 @@
       <section class="gh-sync" id="ghSyncSection" aria-label="同步到 GitHub">
         <h3 class="gh-sync-title">同步到 GitHub</h3>
         <p class="gh-sync-help">
-          将本机动态写入仓库根目录 <code>posts.json</code>，供 GitHub Pages 访客共同看到。
+          同步时会先把新增照片上传到仓库 <code>assets/uploads/</code>，再更新根目录 <code>posts.json</code>（只存相对路径），供 GitHub Pages 访客共同看到。
           请创建
           <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">Personal Access Token</a>
           ：推荐 Fine-grained PAT，仅对 <code>jadyzdd/moments</code> 授予 Contents: Read and write；
@@ -217,7 +217,7 @@
                 <label class="btn-secondary admin-add-img" id="adminEditAddImg" for="adminEditFiles">选择图片上传</label>
                 <input type="file" id="adminEditFiles" class="visually-hidden-file" accept="image/*" multiple />
               </div>
-              <p class="admin-img-tip" id="adminUploadTip">支持一次选多张（最多 9 张），手机也可从相册选图；保存后再同步到 GitHub。</p>
+              <p class="admin-img-tip" id="adminUploadTip">支持一次选多张（最多 9 张），手机也可从相册选图；本机可先预览（data URL）。点「同步到 GitHub」后会上传到 assets/uploads/ 并写入路径。</p>
             </div>
           </div>
         </div>
@@ -241,8 +241,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=ym1"></script>
-  <script src="app.js?v=ym1"></script>
-  <script src="admin.js?v=ym1"></script>
+  <script src="data.js?v=assets1"></script>
+  <script src="app.js?v=assets1"></script>
+  <script src="admin.js?v=assets1"></script>
 </body>
 </html>
