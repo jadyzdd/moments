@@ -387,7 +387,7 @@
   function setUploadTip(msg, isErr) {
     var tip = $('adminUploadTip');
     if (!tip) return;
-    tip.textContent = msg || '支持一次选多张（最多 9 张），手机也可从相册选图；本机可先预览（data URL）。点「同步到 GitHub」后会上传到 assets/uploads/ 并写入路径。';
+    tip.textContent = msg || '最多 9 张；保存后点「同步」才会上传到仓库。';
     tip.style.color = isErr ? '#e64340' : '';
   }
 
@@ -442,7 +442,7 @@
       renderEditorImages();
       if (addBtn) addBtn.removeAttribute('aria-busy');
       if (added && !errors.length) {
-        setUploadTip('已添加 ' + added + ' 张，记得点「保存」，需要给别人看时再「同步到 GitHub」。', false);
+        setUploadTip('已添加 ' + added + ' 张，请先「保存」，再「同步」。', false);
       } else if (added && errors.length) {
         setUploadTip('已添加 ' + added + ' 张；部分失败：' + errors.join('；'), true);
       } else if (errors.length) {

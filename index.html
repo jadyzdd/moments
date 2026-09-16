@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=assets1" />
+  <link rel="stylesheet" href="styles.css?v=syncui1" />
 </head>
 <body>
   <div class="app" id="app">
@@ -151,37 +151,19 @@
 
       <section class="gh-sync" id="ghSyncSection" aria-label="同步到 GitHub">
         <h3 class="gh-sync-title">同步到 GitHub</h3>
-        <p class="gh-sync-help">
-          同步时会先把新增照片上传到仓库 <code>assets/uploads/</code>，再更新根目录 <code>posts.json</code>（只存相对路径），供 GitHub Pages 访客共同看到。
-          请创建
-          <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">Personal Access Token</a>
-          ：推荐 Fine-grained PAT，仅对 <code>jadyzdd/moments</code> 授予 Contents: Read and write；
-          或 Classic Token 勾选 <code>repo</code> 范围。
-          Token 等同写权限，仅保存在本设备 localStorage，不会上传到聊天或提交进仓库。
-        </p>
         <label class="admin-field gh-field">
-          <span>GitHub Token</span>
-          <input type="password" id="ghToken" class="gh-input" placeholder="粘贴新 Token（保存后可清空输入框）" autocomplete="off" />
+          <span>Token <a class="gh-token-link" href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">申请</a></span>
+          <input type="password" id="ghToken" class="gh-input" placeholder="粘贴后点保存" autocomplete="off" />
           <p class="gh-token-masked hidden" id="ghTokenMasked"></p>
         </label>
-        <div class="gh-row">
-          <label class="admin-field gh-field">
-            <span>Owner</span>
-            <input type="text" id="ghOwner" class="gh-input" value="jadyzdd" autocomplete="off" />
-          </label>
-          <label class="admin-field gh-field">
-            <span>Repo</span>
-            <input type="text" id="ghRepo" class="gh-input" value="moments" autocomplete="off" />
-          </label>
-          <label class="admin-field gh-field">
-            <span>Branch</span>
-            <input type="text" id="ghBranch" class="gh-input" value="main" autocomplete="off" />
-          </label>
-        </div>
+        <!-- defaults kept for admin.js; rarely need changing -->
+        <input type="hidden" id="ghOwner" value="jadyzdd" />
+        <input type="hidden" id="ghRepo" value="moments" />
+        <input type="hidden" id="ghBranch" value="main" />
         <div class="gh-actions">
-          <button type="button" class="admin-tool" id="ghSaveToken">保存设置</button>
-          <button type="button" class="admin-tool muted" id="ghClearToken">清除 Token</button>
-          <button type="button" class="gh-sync-btn" id="ghSyncBtn" disabled>同步到 GitHub</button>
+          <button type="button" class="admin-tool" id="ghSaveToken">保存</button>
+          <button type="button" class="admin-tool muted" id="ghClearToken">清除</button>
+          <button type="button" class="gh-sync-btn" id="ghSyncBtn" disabled>同步</button>
         </div>
         <p class="gh-last-sync" id="ghLastSync">尚未同步</p>
         <p class="gh-sync-status hidden" id="ghSyncStatus" role="status"></p>
@@ -217,7 +199,7 @@
                 <label class="btn-secondary admin-add-img" id="adminEditAddImg" for="adminEditFiles">选择图片上传</label>
                 <input type="file" id="adminEditFiles" class="visually-hidden-file" accept="image/*" multiple />
               </div>
-              <p class="admin-img-tip" id="adminUploadTip">支持一次选多张（最多 9 张），手机也可从相册选图；本机可先预览（data URL）。点「同步到 GitHub」后会上传到 assets/uploads/ 并写入路径。</p>
+              <p class="admin-img-tip" id="adminUploadTip">最多 9 张；保存后点「同步」才会上传到仓库。</p>
             </div>
           </div>
         </div>
@@ -241,8 +223,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=assets1"></script>
-  <script src="app.js?v=assets1"></script>
-  <script src="admin.js?v=assets1"></script>
+  <script src="data.js?v=syncui1"></script>
+  <script src="app.js?v=syncui1"></script>
+  <script src="admin.js?v=syncui1"></script>
 </body>
 </html>
