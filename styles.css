@@ -1597,18 +1597,18 @@ body.admin-open {
 }
 
 .gh-sync-status.pending {
-  background: #f0f6ff;
-  color: #3d5a80;
+  color: #1a5fb4;
+  background: #eaf2ff;
 }
 
 .gh-sync-status.success {
+  color: #056b38;
   background: #e8f8ef;
-  color: #067a3e;
 }
 
 .gh-sync-status.error {
-  background: #fdeeee;
-  color: #c0392b;
+  color: #a40000;
+  background: #fdecea;
 }
 
 .gh-sync-status a {
