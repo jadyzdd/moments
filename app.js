@@ -1,5 +1,5 @@
 /**
- * 朋友圈 — 前端逻辑（localStorage 持久化）
+ * 朋友圈 — 前端逻辑（localStorage 持久化 + posts.json 共享源）
  */
 (function () {
   'use strict';
@@ -50,27 +50,55 @@
   let touchStartY = 0;
   let touchDeltaX = 0;
 
+  function normalizePosts(list) {
+    if (!Array.isArray(list)) return null;
+    return list
+      .filter(function (p) {
+        return p && typeof p === 'object' && p.id;
+      })
+      .map(function (p) {
+        return {
+          id: p.id,
+          author: p.author && typeof p.author === 'object'
+            ? { name: p.author.name || '匿名', initial: p.author.initial || '匿' }
+            : { name: '匿名', initial: '匿' },
+          text: typeof p.text === 'string' ? p.text : '',
+          images: Array.isArray(p.images) ? p.images.slice() : [],
+          location: typeof p.location === 'string' ? p.location : '',
+          likes: Array.isArray(p.likes) ? p.likes.slice() : [],
+          likedByMe: !!p.likedByMe,
+          comments: Array.isArray(p.comments)
+            ? p.comments.map(function (c) {
+                return Object.assign({}, c);
+              })
+            : [],
+          createdAt: typeof p.createdAt === 'number' ? p.createdAt : Date.now(),
+        };
+      })
+      .sort(function (a, b) {
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+  }
+
   /* —— Storage —— */
-  function load() {
+  function loadFromLocal() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        posts = D.buildSeedPosts();
-        save();
-        return;
-      }
+      if (!raw) return false;
       const data = JSON.parse(raw);
       if (data && Array.isArray(data.posts)) {
-        posts = data.posts;
+        posts = normalizePosts(data.posts) || [];
         if (typeof data.coverHue === 'number') coverHue = data.coverHue;
-      } else {
-        posts = D.buildSeedPosts();
-        save();
+        return true;
       }
     } catch (e) {
-      console.warn('load failed, using seed', e);
-      posts = D.buildSeedPosts();
+      console.warn('load local failed', e);
     }
+    return false;
+  }
+
+  function loadSeed() {
+    posts = D.buildSeedPosts();
   }
 
   function save() {
@@ -82,6 +110,31 @@
     } catch (e) {
       console.warn('save failed', e);
     }
+  }
+
+  /**
+   * 优先拉取仓库根目录 posts.json（GitHub Pages 共享源）；
+   * 成功则写入 localStorage；失败则沿用本地 / 示例。
+   */
+  function fetchPublishedPosts() {
+    var url = 'posts.json?v=' + Date.now();
+    return fetch(url, { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        var list = Array.isArray(data) ? data : data && data.posts;
+        var normalized = normalizePosts(list);
+        if (!normalized) throw new Error('invalid posts.json');
+        posts = normalized;
+        save();
+        return true;
+      })
+      .catch(function (err) {
+        console.warn('posts.json fetch failed, using local/seed', err);
+        return false;
+      });
   }
 
   /* —— Time format —— */
@@ -590,9 +643,17 @@
   });
 
   /* —— Init —— */
-  load();
+  // 先本地/示例渲染，再尝试覆盖为 posts.json（访客共享源）
+  if (!loadFromLocal()) {
+    loadSeed();
+    save();
+  }
   renderProfile();
   renderFeed();
+
+  fetchPublishedPosts().then(function (ok) {
+    if (ok) renderFeed();
+  });
 
   /* Public API for admin panel */
   window.MomentsApp = {
@@ -610,5 +671,6 @@
     escapeHtml: escapeHtml,
     formatDateYMD: formatDateYMD,
     findPost: findPost,
+    fetchPublishedPosts: fetchPublishedPosts,
   };
 })();

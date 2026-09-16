@@ -1,0 +1,7 @@
+# Local / secrets — never commit tokens or env files
+.env
+.env.*
+*.pem
+*.key
+.local/
+.DS_Store

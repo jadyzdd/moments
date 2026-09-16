@@ -1223,3 +1223,146 @@ body.admin-open {
 .admin-add-img {
   margin-top: 2px;
 }
+
+/* —— GitHub sync section —— */
+.gh-sync {
+  margin: 0 12px 10px;
+  padding: 12px;
+  background: #fff;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
+}
+
+.gh-sync-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.gh-sync-help {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.gh-sync-help a {
+  color: var(--text-link);
+  text-decoration: none;
+}
+
+.gh-sync-help a:active {
+  opacity: 0.75;
+}
+
+.gh-sync-help code {
+  font-size: 11px;
+  background: #f3f3f5;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.gh-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 420px) {
+  .gh-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gh-field {
+  margin-bottom: 10px;
+}
+
+.gh-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #f7f7f7;
+  outline: none;
+}
+
+.gh-input:focus {
+  border-color: var(--wx-green);
+  background: #fff;
+}
+
+.gh-token-masked {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.gh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.gh-sync-btn {
+  border: none;
+  background: var(--wx-green);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.gh-sync-btn:disabled {
+  background: #b7e0c7;
+  cursor: not-allowed;
+}
+
+.gh-sync-btn:not(:disabled):active {
+  background: var(--wx-green-pressed);
+}
+
+.gh-last-sync {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.gh-sync-status {
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  word-break: break-word;
+}
+
+.gh-sync-status.pending {
+  background: #f0f6ff;
+  color: #3d5a80;
+}
+
+.gh-sync-status.success {
+  background: #e8f8ef;
+  color: #067a3e;
+}
+
+.gh-sync-status.error {
+  background: #fdeeee;
+  color: #c0392b;
+}
+
+.gh-sync-status a {
+  color: inherit;
+  text-decoration: underline;
+}

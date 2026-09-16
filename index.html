@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=admin1" />
+  <link rel="stylesheet" href="styles.css?v=sync1" />
 </head>
 <body>
   <div class="app" id="app">
@@ -146,6 +146,44 @@
         <input type="file" id="adminImportFile" accept="application/json,.json" class="hidden" />
       </div>
 
+      <section class="gh-sync" id="ghSyncSection" aria-label="同步到 GitHub">
+        <h3 class="gh-sync-title">同步到 GitHub</h3>
+        <p class="gh-sync-help">
+          将本机动态写入仓库根目录 <code>posts.json</code>，供 GitHub Pages 访客共同看到。
+          请创建
+          <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">Personal Access Token</a>
+          ：推荐 Fine-grained PAT，仅对 <code>jadyzdd/moments</code> 授予 Contents: Read and write；
+          或 Classic Token 勾选 <code>repo</code> 范围。
+          Token 等同写权限，仅保存在本设备 localStorage，不会上传到聊天或提交进仓库。
+        </p>
+        <label class="admin-field gh-field">
+          <span>GitHub Token</span>
+          <input type="password" id="ghToken" class="gh-input" placeholder="粘贴新 Token（保存后可清空输入框）" autocomplete="off" />
+          <p class="gh-token-masked hidden" id="ghTokenMasked"></p>
+        </label>
+        <div class="gh-row">
+          <label class="admin-field gh-field">
+            <span>Owner</span>
+            <input type="text" id="ghOwner" class="gh-input" value="jadyzdd" autocomplete="off" />
+          </label>
+          <label class="admin-field gh-field">
+            <span>Repo</span>
+            <input type="text" id="ghRepo" class="gh-input" value="moments" autocomplete="off" />
+          </label>
+          <label class="admin-field gh-field">
+            <span>Branch</span>
+            <input type="text" id="ghBranch" class="gh-input" value="main" autocomplete="off" />
+          </label>
+        </div>
+        <div class="gh-actions">
+          <button type="button" class="admin-tool" id="ghSaveToken">保存设置</button>
+          <button type="button" class="admin-tool muted" id="ghClearToken">清除 Token</button>
+          <button type="button" class="gh-sync-btn" id="ghSyncBtn" disabled>同步到 GitHub</button>
+        </div>
+        <p class="gh-last-sync" id="ghLastSync">尚未同步</p>
+        <p class="gh-sync-status hidden" id="ghSyncStatus" role="status"></p>
+      </section>
+
       <div class="admin-list" id="adminList"></div>
 
       <!-- 编辑/新建表单 -->
@@ -181,8 +219,8 @@
     </div>
   </div>
 
-  <script src="data.js?v=admin1"></script>
-  <script src="app.js?v=admin1"></script>
-  <script src="admin.js?v=admin1"></script>
+  <script src="data.js?v=sync1"></script>
+  <script src="app.js?v=sync1"></script>
+  <script src="admin.js?v=sync1"></script>
 </body>
 </html>
