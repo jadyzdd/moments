@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=syncui1" />
+  <link rel="stylesheet" href="styles.css?v=syncui2" />
 </head>
 <body>
   <div class="app" id="app">
@@ -150,22 +150,16 @@
       </div>
 
       <section class="gh-sync" id="ghSyncSection" aria-label="同步到 GitHub">
-        <h3 class="gh-sync-title">同步到 GitHub</h3>
-        <label class="admin-field gh-field">
-          <span>Token <a class="gh-token-link" href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">申请</a></span>
-          <input type="password" id="ghToken" class="gh-input" placeholder="粘贴后点保存" autocomplete="off" />
-          <p class="gh-token-masked hidden" id="ghTokenMasked"></p>
-        </label>
-        <!-- defaults kept for admin.js; rarely need changing -->
         <input type="hidden" id="ghOwner" value="jadyzdd" />
         <input type="hidden" id="ghRepo" value="moments" />
         <input type="hidden" id="ghBranch" value="main" />
-        <div class="gh-actions">
+        <!-- Token UI removed; stored in localStorage. 「保存」用弹窗更新。 -->
+        <input type="password" id="ghToken" class="visually-hidden-file" value="" tabindex="-1" aria-hidden="true" autocomplete="off" />
+        <div class="gh-actions gh-actions-only">
           <button type="button" class="admin-tool" id="ghSaveToken">保存</button>
           <button type="button" class="admin-tool muted" id="ghClearToken">清除</button>
           <button type="button" class="gh-sync-btn" id="ghSyncBtn" disabled>同步</button>
         </div>
-        <p class="gh-last-sync" id="ghLastSync">尚未同步</p>
         <p class="gh-sync-status hidden" id="ghSyncStatus" role="status"></p>
       </section>
 
@@ -223,8 +217,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=syncui1"></script>
-  <script src="app.js?v=syncui1"></script>
-  <script src="admin.js?v=syncui1"></script>
+  <script src="data.js?v=syncui2"></script>
+  <script src="app.js?v=syncui2"></script>
+  <script src="admin.js?v=syncui2"></script>
 </body>
 </html>

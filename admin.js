@@ -652,22 +652,10 @@
     var owner = $('ghOwner');
     var repo = $('ghRepo');
     var branch = $('ghBranch');
-    var tokenInput = $('ghToken');
-    var masked = $('ghTokenMasked');
     if (owner) owner.value = lsGet(GH_OWNER_KEY, DEFAULT_OWNER);
     if (repo) repo.value = lsGet(GH_REPO_KEY, DEFAULT_REPO);
     if (branch) branch.value = lsGet(GH_BRANCH_KEY, DEFAULT_BRANCH);
-    var token = getGhToken();
-    if (tokenInput) tokenInput.value = '';
-    if (masked) {
-      if (token) {
-        masked.textContent = '已保存 Token：' + maskToken(token);
-        masked.classList.remove('hidden');
-      } else {
-        masked.textContent = '';
-        masked.classList.add('hidden');
-      }
-    }
+    updateSyncButtonState();
   }
 
   function persistGhFields() {
@@ -677,31 +665,36 @@
     lsSet(GH_OWNER_KEY, owner);
     lsSet(GH_REPO_KEY, repo);
     lsSet(GH_BRANCH_KEY, branch);
-    var tokenInput = $('ghToken');
-    var typed = tokenInput && tokenInput.value.trim();
-    if (typed) {
-      lsSet(GH_TOKEN_KEY, typed);
-      tokenInput.value = '';
-    }
-    loadGhForm();
     updateSyncButtonState();
+  }
+
+  /** 「保存」：弹窗写入 Token（平时不占界面） */
+  function promptSaveGhToken() {
+    var cur = getGhToken();
+    var hint = cur ? '本机已有 Token。粘贴新 Token 覆盖，或留空取消：' : '粘贴 GitHub Token 并保存到本机：';
+    var typed = window.prompt(hint, '');
+    if (typed == null) return; // cancel
+    typed = String(typed).trim();
+    if (!typed) {
+      setSyncStatus('已取消', '');
+      return;
+    }
+    lsSet(GH_TOKEN_KEY, typed);
+    persistGhFields();
+    setSyncStatus('Token 已保存到本机', 'success');
   }
 
   function clearGhToken() {
     if (!confirm('清除本机保存的 GitHub Token？')) return;
     lsSet(GH_TOKEN_KEY, '');
-    var tokenInput = $('ghToken');
-    if (tokenInput) tokenInput.value = '';
-    loadGhForm();
     updateSyncButtonState();
-    setSyncStatus('', '');
+    setSyncStatus('已清除 Token', '');
   }
 
   function updateSyncButtonState() {
     var btn = $('ghSyncBtn');
     if (!btn) return;
-    var hasToken = !!getGhToken() || !!( $('ghToken') && $('ghToken').value.trim() );
-    btn.disabled = !hasToken || syncing;
+    btn.disabled = !getGhToken() || syncing;
   }
 
   function renderLastSync() {
@@ -1196,10 +1189,7 @@
 
     // GitHub sync form
     if ($('ghSaveToken')) {
-      $('ghSaveToken').addEventListener('click', function () {
-        persistGhFields();
-        setSyncStatus('已保存到本机 localStorage（不会提交到仓库）', 'success');
-      });
+      $('ghSaveToken').addEventListener('click', promptSaveGhToken);
     }
     if ($('ghClearToken')) {
       $('ghClearToken').addEventListener('click', clearGhToken);
@@ -1207,16 +1197,6 @@
     if ($('ghSyncBtn')) {
       $('ghSyncBtn').addEventListener('click', syncToGitHub);
     }
-    if ($('ghToken')) {
-      $('ghToken').addEventListener('input', updateSyncButtonState);
-    }
-    ['ghOwner', 'ghRepo', 'ghBranch'].forEach(function (id) {
-      var el = $(id);
-      if (el) {
-        el.addEventListener('change', persistGhFields);
-        el.addEventListener('blur', persistGhFields);
-      }
-    });
 
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;

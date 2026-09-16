@@ -1613,3 +1613,19 @@ body.admin-open {
   color: inherit;
   text-decoration: underline;
 }
+
+
+.gh-sync {
+  border: none;
+  background: transparent;
+  padding: 4px 16px 8px !important;
+  margin: 4px 0 8px !important;
+}
+.gh-sync-title { display: none; }
+.gh-actions-only {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.gh-last-sync { display: none; }
