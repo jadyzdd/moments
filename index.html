@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=upload2" />
+  <link rel="stylesheet" href="styles.css?v=ym1" />
 </head>
 <body>
   <div class="app" id="app">
@@ -49,6 +49,9 @@
       <span class="fab-icon">+</span>
       <span class="fab-label">发布</span>
     </button>
+
+    <!-- 年月定位入口（微信朋友圈风格） -->
+    <button type="button" class="ym-entry" id="btnYm" aria-label="按年月查找" title="按年月查找">年月</button>
   </div>
 
   <!-- 发布弹层 -->
@@ -222,8 +225,24 @@
     </div>
   </div>
 
-  <script src="data.js?v=upload2"></script>
-  <script src="app.js?v=upload2"></script>
-  <script src="admin.js?v=upload2"></script>
+  <!-- 年月选择面板 -->
+  <div class="modal-mask hidden" id="ymMask" role="dialog" aria-modal="true" aria-labelledby="ymTitle">
+    <div class="modal ym-modal">
+      <div class="modal-header">
+        <button type="button" class="modal-cancel" id="btnYmClose">关闭</button>
+        <h2 class="modal-title" id="ymTitle">选择年月</h2>
+        <span class="modal-header-spacer" aria-hidden="true"></span>
+      </div>
+      <div class="ym-list" id="ymList"></div>
+      <p class="ym-empty-hint hidden" id="ymEmptyHint">暂无动态可定位</p>
+    </div>
+  </div>
+
+  <!-- 轻提示 toast -->
+  <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="data.js?v=ym1"></script>
+  <script src="app.js?v=ym1"></script>
+  <script src="admin.js?v=ym1"></script>
 </body>
 </html>

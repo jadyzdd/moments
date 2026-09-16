@@ -35,6 +35,12 @@
     lightboxPrev: document.getElementById('lightboxPrev'),
     lightboxNext: document.getElementById('lightboxNext'),
     lightboxCounter: document.getElementById('lightboxCounter'),
+    btnYm: document.getElementById('btnYm'),
+    ymMask: document.getElementById('ymMask'),
+    ymList: document.getElementById('ymList'),
+    ymEmptyHint: document.getElementById('ymEmptyHint'),
+    btnYmClose: document.getElementById('btnYmClose'),
+    toast: document.getElementById('toast'),
   };
 
   let posts = [];
@@ -49,6 +55,8 @@
   let touchStartX = 0;
   let touchStartY = 0;
   let touchDeltaX = 0;
+  let toastTimer = null;
+  let ymExpandedYear = null;
 
   function normalizePosts(list) {
     if (!Array.isArray(list)) return null;
@@ -155,6 +163,55 @@
     return formatDateYMD(ts).full;
   }
 
+  /** 本地时区年月键 YYYY-MM */
+  function ymFromTs(ts) {
+    const date = new Date(ts);
+    const y = date.getFullYear();
+    const m = date.getMonth() + 1;
+    const mm = m < 10 ? '0' + m : String(m);
+    return {
+      year: y,
+      month: m,
+      key: y + '-' + mm,
+      label: y + '年' + m + '月',
+    };
+  }
+
+  /** 从当前 posts 构建 { years: number[], monthsByYear: { [year]: number[] } } */
+  function buildYmIndex(list) {
+    const map = {};
+    (list || []).forEach(function (p) {
+      const ym = ymFromTs(p.createdAt);
+      if (!map[ym.year]) map[ym.year] = {};
+      map[ym.year][ym.month] = true;
+    });
+    const years = Object.keys(map)
+      .map(Number)
+      .sort(function (a, b) {
+        return b - a;
+      });
+    const monthsByYear = {};
+    years.forEach(function (y) {
+      monthsByYear[y] = Object.keys(map[y])
+        .map(Number)
+        .sort(function (a, b) {
+          return b - a;
+        });
+    });
+    return { years: years, monthsByYear: monthsByYear };
+  }
+
+  function showToast(msg) {
+    if (!els.toast) return;
+    els.toast.textContent = msg;
+    els.toast.classList.remove('hidden');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      els.toast.classList.add('hidden');
+      toastTimer = null;
+    }, 1600);
+  }
+
   function escapeHtml(s) {
     return String(s)
       .replace(/&/g, '&amp;')
@@ -195,10 +252,32 @@
     if (!posts.length) {
       els.feed.innerHTML = '';
       els.emptyState.classList.remove('hidden');
+      if (els.btnYm) els.btnYm.classList.add('hidden');
+      renderYmPanel();
       return;
     }
     els.emptyState.classList.add('hidden');
-    els.feed.innerHTML = posts.map(renderPost).join('');
+    if (els.btnYm) els.btnYm.classList.remove('hidden');
+
+    let html = '';
+    let lastKey = null;
+    posts.forEach(function (post) {
+      const ym = ymFromTs(post.createdAt);
+      if (ym.key !== lastKey) {
+        html +=
+          '<div class="ym-sticky" data-ym="' +
+          escapeHtml(ym.key) +
+          '" id="ym-anchor-' +
+          escapeHtml(ym.key) +
+          '"><span class="ym-sticky-label">' +
+          escapeHtml(ym.label) +
+          '</span></div>';
+        lastKey = ym.key;
+      }
+      html += renderPost(post, ym.key);
+    });
+    els.feed.innerHTML = html;
+    renderYmPanel();
   }
 
   function renderArtisticTime(ts) {
@@ -219,7 +298,8 @@
     );
   }
 
-  function renderPost(post) {
+  function renderPost(post, ymKey) {
+    const ymAttr = ymKey || ymFromTs(post.createdAt).key;
     const n = (post.images && post.images.length) || 0;
     const gridClass = n === 0 ? '' : 'n' + Math.min(n, 9);
     const imagesHtml =
@@ -287,6 +367,8 @@
     return (
       '<article class="post" data-id="' +
       escapeHtml(post.id) +
+      '" data-ym="' +
+      escapeHtml(ymAttr) +
       '">' +
       '<div class="post-header">' +
       renderArtisticTime(post.createdAt) +
@@ -495,6 +577,91 @@
     renderFeed();
   }
 
+  /* —— Year/Month locator —— */
+  function renderYmPanel() {
+    if (!els.ymList) return;
+    const index = buildYmIndex(posts);
+    if (!index.years.length) {
+      els.ymList.innerHTML = '';
+      if (els.ymEmptyHint) els.ymEmptyHint.classList.remove('hidden');
+      return;
+    }
+    if (els.ymEmptyHint) els.ymEmptyHint.classList.add('hidden');
+
+    if (ymExpandedYear == null || index.years.indexOf(ymExpandedYear) === -1) {
+      ymExpandedYear = index.years[0];
+    }
+
+    els.ymList.innerHTML = index.years
+      .map(function (y) {
+        const open = y === ymExpandedYear;
+        const months = index.monthsByYear[y] || [];
+        const monthsHtml = open
+          ? '<div class="ym-months">' +
+            months
+              .map(function (m) {
+                const mm = m < 10 ? '0' + m : String(m);
+                const key = y + '-' + mm;
+                return (
+                  '<button type="button" class="ym-month-btn" data-ym-jump="' +
+                  escapeHtml(key) +
+                  '">' +
+                  m +
+                  '月</button>'
+                );
+              })
+              .join('') +
+            '</div>'
+          : '';
+        return (
+          '<div class="ym-year-block' +
+          (open ? ' open' : '') +
+          '">' +
+          '<button type="button" class="ym-year-btn" data-ym-year="' +
+          y +
+          '" aria-expanded="' +
+          (open ? 'true' : 'false') +
+          '">' +
+          '<span class="ym-year-label">' +
+          y +
+          '年</span>' +
+          '<span class="ym-year-meta">' +
+          months.length +
+          '个月</span>' +
+          '<span class="ym-year-chevron" aria-hidden="true">' +
+          (open ? '▾' : '▸') +
+          '</span></button>' +
+          monthsHtml +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
+  function openYmPanel() {
+    if (!els.ymMask) return;
+    renderYmPanel();
+    els.ymMask.classList.remove('hidden');
+  }
+
+  function closeYmPanel() {
+    if (!els.ymMask) return;
+    els.ymMask.classList.add('hidden');
+  }
+
+  function jumpToYm(key) {
+    closeYmPanel();
+    const anchor =
+      document.getElementById('ym-anchor-' + key) ||
+      document.querySelector('.post[data-ym="' + key + '"], .ym-sticky[data-ym="' + key + '"]');
+    if (!anchor) {
+      showToast('该月暂无动态');
+      return;
+    }
+    const top = anchor.getBoundingClientRect().top + window.pageYOffset - 8;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
+
   /* —— Events —— */
   els.feed.addEventListener('click', function (e) {
     const img = e.target.closest('.img-grid img[data-post-id]');
@@ -557,6 +724,34 @@
       coverHue = (coverHue + 47) % 360;
       applyCover();
       save();
+    });
+  }
+
+  /* year/month locator events */
+  if (els.btnYm) {
+    els.btnYm.addEventListener('click', openYmPanel);
+  }
+  if (els.btnYmClose) {
+    els.btnYmClose.addEventListener('click', closeYmPanel);
+  }
+  if (els.ymMask) {
+    els.ymMask.addEventListener('click', function (e) {
+      if (e.target === els.ymMask) closeYmPanel();
+    });
+  }
+  if (els.ymList) {
+    els.ymList.addEventListener('click', function (e) {
+      const yearBtn = e.target.closest('[data-ym-year]');
+      if (yearBtn) {
+        const y = parseInt(yearBtn.getAttribute('data-ym-year'), 10);
+        ymExpandedYear = ymExpandedYear === y ? null : y;
+        renderYmPanel();
+        return;
+      }
+      const monthBtn = e.target.closest('[data-ym-jump]');
+      if (monthBtn) {
+        jumpToYm(monthBtn.getAttribute('data-ym-jump'));
+      }
     });
   }
 
@@ -637,6 +832,10 @@
       }
     }
     if (e.key === 'Escape') {
+      if (els.ymMask && !els.ymMask.classList.contains('hidden')) {
+        closeYmPanel();
+        return;
+      }
       if (!els.composeMask.classList.contains('hidden')) closeCompose();
       if (!els.commentMask.classList.contains('hidden')) closeComment();
     }

@@ -557,6 +557,199 @@ body {
   font-weight: 400;
 }
 
+/* —— Year/Month locator (WeChat Moments style) —— */
+.ym-entry {
+  position: fixed;
+  right: max(0px, calc((100vw - var(--max-w)) / 2));
+  top: 42%;
+  z-index: 35;
+  writing-mode: vertical-rl;
+  letter-spacing: 0.18em;
+  border: none;
+  border-radius: 10px 0 0 10px;
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 14px 7px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: -2px 2px 10px rgba(0, 0, 0, 0.12);
+  transition: background 0.2s, transform 0.15s;
+  user-select: none;
+}
+
+.ym-entry:hover {
+  background: rgba(7, 193, 96, 0.88);
+}
+
+.ym-entry:active {
+  transform: translateX(1px);
+  background: var(--wx-green);
+}
+
+.ym-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(237, 237, 237, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 8px 16px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ym-sticky-label {
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.ym-sticky-label::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  margin-right: 6px;
+  border-radius: 2px;
+  background: var(--wx-green);
+  vertical-align: -1px;
+}
+
+.ym-modal {
+  max-height: 70dvh;
+}
+
+.modal-header-spacer {
+  width: 48px;
+  flex-shrink: 0;
+}
+
+.ym-list {
+  padding: 4px 12px 12px;
+  max-height: calc(70dvh - 56px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ym-year-block {
+  margin-bottom: 6px;
+  border-radius: var(--radius);
+  background: var(--like-bg);
+  overflow: hidden;
+}
+
+.ym-year-block.open {
+  background: #eefaf3;
+  box-shadow: inset 0 0 0 1px rgba(7, 193, 96, 0.25);
+}
+
+.ym-year-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 14px 14px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ym-year-btn:active {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.ym-year-label {
+  flex: 1;
+}
+
+.ym-year-meta {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.ym-year-chevron {
+  font-size: 12px;
+  color: var(--text-secondary);
+  width: 1em;
+  text-align: center;
+}
+
+.ym-months {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 0 12px 14px;
+}
+
+.ym-month-btn {
+  border: none;
+  border-radius: 20px;
+  background: #fff;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 0;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: background 0.15s, color 0.15s, transform 0.12s;
+}
+
+.ym-month-btn:hover {
+  background: var(--wx-green);
+  color: #fff;
+}
+
+.ym-month-btn:active {
+  transform: scale(0.96);
+  background: var(--wx-green-pressed);
+  color: #fff;
+}
+
+.ym-empty-hint {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 24px 16px 32px;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(96px + var(--safe-bottom));
+  transform: translateX(-50%);
+  z-index: 200;
+  max-width: min(80vw, 280px);
+  padding: 10px 18px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  pointer-events: none;
+  animation: toastIn 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 /* Modals */
 .modal-mask {
   position: fixed;
