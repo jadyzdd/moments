@@ -115,13 +115,27 @@
   /* —— Image compress —— */
   function compressImageFile(file) {
     return new Promise(function (resolve, reject) {
-      if (!file || !file.type || file.type.indexOf('image/') !== 0) {
+      if (!file) {
         resolve(null);
+        return;
+      }
+      var mime = file.type || '';
+      if (!mime) {
+        var fname = (file.name || '').toLowerCase();
+        if (/\.(jpe?g|png|gif|webp|bmp)$/.test(fname)) mime = 'image/jpeg';
+        else if (/\.heic$/.test(fname)) mime = 'image/heic';
+      }
+      if (!mime || mime.indexOf('image/') !== 0) {
+        resolve(null);
+        return;
+      }
+      if (mime === 'image/heic' || mime === 'image/heif') {
+        reject(new Error('暂不支持 HEIC，请先转为 JPG/PNG 再上传'));
         return;
       }
       var fr = new FileReader();
       fr.onerror = function () {
-        reject(fr.error);
+        reject(fr.error || new Error('read failed'));
       };
       fr.onload = function () {
         var dataUrl = fr.result;
@@ -145,8 +159,7 @@
             var ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, tw, th);
             var out;
-            // Prefer JPEG for photos; keep PNG/GIF/SVG-ish as PNG if original was png with transparency unlikely needed
-            if (file.type === 'image/png' && scale === 1 && file.size < 200 * 1024) {
+            if (mime === 'image/png' && scale === 1 && file.size < 200 * 1024) {
               out = canvas.toDataURL('image/png');
             } else {
               out = canvas.toDataURL('image/jpeg', IMG_JPEG_QUALITY);
@@ -157,7 +170,7 @@
           }
         };
         img.onerror = function () {
-          resolve(dataUrl);
+          reject(new Error('图片无法解码，请换 JPG/PNG 再试'));
         };
         img.src = dataUrl;
       };
@@ -368,6 +381,13 @@
     renderEditorImages();
   }
 
+  function setUploadTip(msg, isErr) {
+    var tip = $('adminUploadTip');
+    if (!tip) return;
+    tip.textContent = msg || '支持一次选多张（最多 9 张），手机也可从相册选图；保存后再同步到 GitHub。';
+    tip.style.color = isErr ? '#e64340' : '';
+  }
+
   function readFilesAsDataURLs(fileList) {
     var files = Array.prototype.slice.call(fileList || [], 0);
     var room = 9 - editImages.length;
@@ -376,14 +396,46 @@
       return Promise.resolve();
     }
     files = files.slice(0, room);
+    if (!files.length) return Promise.resolve();
+    setUploadTip('正在处理图片…', false);
+    var addBtn = $('adminEditAddImg');
+    if (addBtn) addBtn.setAttribute('aria-busy', 'true');
     var jobs = files.map(function (file) {
-      return compressImageFile(file);
+      return compressImageFile(file).then(
+        function (u) {
+          return { ok: !!u, url: u, name: file.name };
+        },
+        function (err) {
+          return { ok: false, url: null, name: file.name, err: err };
+        }
+      );
     });
-    return Promise.all(jobs).then(function (urls) {
-      urls.forEach(function (u) {
-        if (u && editImages.length < 9) editImages.push(u);
+    return Promise.all(jobs).then(function (results) {
+      var added = 0;
+      var errors = [];
+      results.forEach(function (r) {
+        if (r.ok && r.url && editImages.length < 9) {
+          editImages.push(r.url);
+          added++;
+        } else if (!r.ok) {
+          errors.push(
+            (r.name || '图片') +
+              (r.err && r.err.message ? '：' + r.err.message : '')
+          );
+        }
       });
       renderEditorImages();
+      if (addBtn) addBtn.removeAttribute('aria-busy');
+      if (added && !errors.length) {
+        setUploadTip('已添加 ' + added + ' 张，记得点「保存」，需要给别人看时再「同步到 GitHub」。', false);
+      } else if (added && errors.length) {
+        setUploadTip('已添加 ' + added + ' 张；部分失败：' + errors.join('；'), true);
+      } else if (errors.length) {
+        setUploadTip('上传失败：' + errors.join('；'), true);
+        alert('上传失败：' + errors[0]);
+      } else {
+        setUploadTip('没有可用的图片（请选 JPG/PNG/WebP）', true);
+      }
     });
   }
 
@@ -901,14 +953,23 @@
 
     $('adminEditCancel').addEventListener('click', closeEditor);
     $('adminEditSave').addEventListener('click', saveEditor);
-    $('adminEditAddImg').addEventListener('click', function () {
-      $('adminEditFiles').click();
-    });
+    // Label[for=adminEditFiles] opens the picker (works even when input is visually hidden).
+    // Keep a JS fallback click for older markup.
+    var addImgBtn = $('adminEditAddImg');
+    if (addImgBtn && addImgBtn.tagName === 'BUTTON') {
+      addImgBtn.addEventListener('click', function () {
+        var inp = $('adminEditFiles');
+        if (inp) inp.click();
+      });
+    }
     $('adminEditFiles').addEventListener('change', function () {
       var files = this.files;
+      // copy FileList before clearing
+      var list = files ? Array.prototype.slice.call(files, 0) : [];
       this.value = '';
-      readFilesAsDataURLs(files).catch(function () {
-        alert('读取图片失败');
+      readFilesAsDataURLs(list).catch(function (e) {
+        setUploadTip('读取图片失败', true);
+        alert('读取图片失败' + (e && e.message ? '：' + e.message : ''));
       });
     });
     $('adminEditImages').addEventListener('click', function (e) {

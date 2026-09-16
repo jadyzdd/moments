@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=sync1" />
+  <link rel="stylesheet" href="styles.css?v=upload2" />
 </head>
 <body>
   <div class="app" id="app">
@@ -143,7 +143,7 @@
         <button type="button" class="admin-tool" id="adminImportMerge">导入合并</button>
         <button type="button" class="admin-tool" id="adminChangePw">改密码</button>
         <button type="button" class="admin-tool muted" id="adminLock">锁定</button>
-        <input type="file" id="adminImportFile" accept="application/json,.json" class="hidden" />
+        <input type="file" id="adminImportFile" accept="application/json,.json" class="visually-hidden-file" />
       </div>
 
       <section class="gh-sync" id="ghSyncSection" aria-label="同步到 GitHub">
@@ -210,8 +210,11 @@
             <div class="admin-field">
               <span>图片</span>
               <div class="admin-edit-images" id="adminEditImages"></div>
-              <button type="button" class="btn-secondary admin-add-img" id="adminEditAddImg">添加图片</button>
-              <input type="file" id="adminEditFiles" accept="image/*" multiple class="hidden" />
+              <div class="admin-upload-row">
+                <label class="btn-secondary admin-add-img" id="adminEditAddImg" for="adminEditFiles">选择图片上传</label>
+                <input type="file" id="adminEditFiles" class="visually-hidden-file" accept="image/*" multiple />
+              </div>
+              <p class="admin-img-tip" id="adminUploadTip">支持一次选多张（最多 9 张），手机也可从相册选图；保存后再同步到 GitHub。</p>
             </div>
           </div>
         </div>
@@ -219,8 +222,8 @@
     </div>
   </div>
 
-  <script src="data.js?v=sync1"></script>
-  <script src="app.js?v=sync1"></script>
-  <script src="admin.js?v=sync1"></script>
+  <script src="data.js?v=upload2"></script>
+  <script src="app.js?v=upload2"></script>
+  <script src="admin.js?v=upload2"></script>
 </body>
 </html>
