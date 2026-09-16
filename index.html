@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=55f111c" />
+  <link rel="stylesheet" href="styles.css?v=admin1" />
 </head>
 <body>
   <div class="app" id="app">
@@ -40,6 +40,8 @@
       <button type="button" class="footer-link" id="btnClear">清空本地数据</button>
       <span class="footer-sep">·</span>
       <button type="button" class="footer-link" id="btnRestore">恢复示例</button>
+      <span class="footer-sep">·</span>
+      <button type="button" class="footer-link" id="btnAdmin">管理</button>
     </footer>
 
     <!-- 悬浮发布 -->
@@ -106,7 +108,81 @@
     <div class="lightbox-counter hidden" id="lightboxCounter"></div>
   </div>
 
-  <script src="data.js?v=55f111c"></script>
-  <script src="app.js?v=55f111c"></script>
+
+  <!-- 管理密码门 -->
+  <div class="modal-mask hidden" id="adminPwMask" role="dialog" aria-modal="true" aria-labelledby="adminPwTitle">
+    <div class="modal admin-pw-modal">
+      <div class="modal-header">
+        <button type="button" class="modal-cancel" id="adminPwCancel">取消</button>
+        <h2 class="modal-title" id="adminPwTitle">管理入口</h2>
+        <button type="button" class="modal-ok" id="adminPwSubmit">解锁</button>
+      </div>
+      <div class="admin-pw-body">
+        <p class="admin-pw-hint">输入管理密码以编辑本地动态（数据仅保存在本浏览器）。</p>
+        <input type="password" id="adminPwInput" class="admin-pw-input" placeholder="密码" autocomplete="current-password" />
+        <p class="admin-pw-error hidden" id="adminPwError" role="alert"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 管理面板 -->
+  <div class="admin-panel hidden" id="adminPanel" role="dialog" aria-modal="true" aria-label="管理面板">
+    <div class="admin-panel-inner">
+      <header class="admin-header">
+        <button type="button" class="admin-header-btn" id="adminClose" aria-label="关闭">←</button>
+        <div class="admin-header-titles">
+          <h2>本地管理</h2>
+          <p class="admin-count" id="adminCount">共 0 条</p>
+        </div>
+        <button type="button" class="admin-header-btn accent" id="adminNew">新建</button>
+      </header>
+
+      <div class="admin-toolbar">
+        <button type="button" class="admin-tool" id="adminExport">导出 JSON</button>
+        <button type="button" class="admin-tool" id="adminImportReplace">导入替换</button>
+        <button type="button" class="admin-tool" id="adminImportMerge">导入合并</button>
+        <button type="button" class="admin-tool" id="adminChangePw">改密码</button>
+        <button type="button" class="admin-tool muted" id="adminLock">锁定</button>
+        <input type="file" id="adminImportFile" accept="application/json,.json" class="hidden" />
+      </div>
+
+      <div class="admin-list" id="adminList"></div>
+
+      <!-- 编辑/新建表单 -->
+      <div class="admin-editor hidden" id="adminEditor">
+        <div class="admin-editor-sheet">
+          <div class="modal-header">
+            <button type="button" class="modal-cancel" id="adminEditCancel">取消</button>
+            <h2 class="modal-title" id="adminEditorTitle">新建动态</h2>
+            <button type="button" class="modal-ok" id="adminEditSave">保存</button>
+          </div>
+          <div class="admin-editor-body">
+            <label class="admin-field">
+              <span>文字</span>
+              <textarea id="adminEditText" rows="4" maxlength="500" placeholder="这一刻的想法…"></textarea>
+            </label>
+            <label class="admin-field">
+              <span>地点</span>
+              <input type="text" id="adminEditLocation" maxlength="40" placeholder="所在位置（可选）" />
+            </label>
+            <label class="admin-field">
+              <span>日期时间</span>
+              <input type="datetime-local" id="adminEditDatetime" />
+            </label>
+            <div class="admin-field">
+              <span>图片</span>
+              <div class="admin-edit-images" id="adminEditImages"></div>
+              <button type="button" class="btn-secondary admin-add-img" id="adminEditAddImg">添加图片</button>
+              <input type="file" id="adminEditFiles" accept="image/*" multiple class="hidden" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="data.js?v=admin1"></script>
+  <script src="app.js?v=admin1"></script>
+  <script src="admin.js?v=admin1"></script>
 </body>
 </html>

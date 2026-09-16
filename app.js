@@ -593,4 +593,22 @@
   load();
   renderProfile();
   renderFeed();
+
+  /* Public API for admin panel */
+  window.MomentsApp = {
+    STORAGE_KEY: STORAGE_KEY,
+    get ME() { return ME; },
+    getPosts: function () { return posts; },
+    setPosts: function (next) {
+      posts = Array.isArray(next) ? next : [];
+      save();
+      renderFeed();
+    },
+    save: save,
+    renderFeed: renderFeed,
+    uid: uid,
+    escapeHtml: escapeHtml,
+    formatDateYMD: formatDateYMD,
+    findPost: findPost,
+  };
 })();
