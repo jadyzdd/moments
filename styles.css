@@ -521,7 +521,7 @@ body {
 
 .ym-picker-title {
   margin: 0 0 12px;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: #111;
   letter-spacing: 0.02em;
@@ -529,7 +529,7 @@ body {
 
 .ym-picker {
   position: relative;
-  height: 220px;
+  height: 200px;
   margin: 4px 0 18px;
   overflow: hidden;
 }
@@ -539,8 +539,8 @@ body {
   left: 0;
   right: 0;
   top: 50%;
-  height: 44px;
-  margin-top: -22px;
+  height: 40px;
+  margin-top: -20px;
   border-radius: 10px;
   background: #f2f2f2;
   pointer-events: none;
@@ -551,7 +551,7 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  height: 72px;
+  height: 64px;
   z-index: 2;
   pointer-events: none;
 }
@@ -571,13 +571,17 @@ body {
   z-index: 1;
   display: flex;
   height: 100%;
+  min-height: 0;
   gap: 8px;
 }
 
 .ym-picker-col {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0; /* allow flex child to scroll instead of growing with content */
   height: 100%;
-  overflow-y: auto;
+  max-height: 100%;
+  overflow-y: scroll;
   overflow-x: hidden;
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
@@ -589,27 +593,30 @@ body {
 
 .ym-picker-col::-webkit-scrollbar {
   display: none;
+  width: 0;
+  height: 0;
 }
 
 .ym-picker-item {
-  height: 44px;
-  line-height: 44px;
+  height: 40px;
+  line-height: 40px;
   scroll-snap-align: center;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 500;
   color: #c8c8c8;
   transition: color 0.15s, font-size 0.15s;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 .ym-picker-item.is-active {
   color: #111;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 600;
 }
 
 .ym-picker-spacer {
-  height: 88px; /* 2 * item height — lets first/last snap to center */
+  height: 80px; /* 2 * item height — lets first/last snap to center */
   flex-shrink: 0;
   pointer-events: none;
 }
@@ -624,10 +631,10 @@ body {
   flex: 1;
   border: none;
   border-radius: 10px;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   font-family: inherit;
-  padding: 14px 0;
+  padding: 12px 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }

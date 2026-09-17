@@ -631,7 +631,7 @@
   /* —— Year/Month locator —— */
   var ymPickerYears = [];
   var ymScrollTimers = { year: null, month: null };
-  var YM_ITEM_H = 44;
+  var YM_ITEM_H = 40;
 
   function pad2(n) {
     n = Number(n);
@@ -736,11 +736,59 @@
         if (ymScrollTimers[which]) clearTimeout(ymScrollTimers[which]);
         ymScrollTimers[which] = setTimeout(function () {
           var idx = ymColIndexFromScroll(col);
-          scrollYmColToIndex(col, idx, true);
-        }, 80);
+          // snap without smooth to avoid fighting finger/wheel scroll
+          scrollYmColToIndex(col, idx, false);
+        }, 120);
       },
       { passive: true }
     );
+
+    // Touch/mouse drag fallback (helps when nested overflow is flaky)
+    var drag = { active: false, startY: 0, startTop: 0 };
+    function onStart(clientY) {
+      drag.active = true;
+      drag.startY = clientY;
+      drag.startTop = col.scrollTop;
+      if (ymScrollTimers[which]) clearTimeout(ymScrollTimers[which]);
+    }
+    function onMove(clientY) {
+      if (!drag.active) return;
+      col.scrollTop = drag.startTop + (drag.startY - clientY);
+      syncYmColActive(col);
+    }
+    function onEnd() {
+      if (!drag.active) return;
+      drag.active = false;
+      var idx = ymColIndexFromScroll(col);
+      scrollYmColToIndex(col, idx, true);
+    }
+    col.addEventListener(
+      'touchstart',
+      function (e) {
+        if (!e.touches || !e.touches[0]) return;
+        onStart(e.touches[0].clientY);
+      },
+      { passive: true }
+    );
+    col.addEventListener(
+      'touchmove',
+      function (e) {
+        if (!drag.active || !e.touches || !e.touches[0]) return;
+        onMove(e.touches[0].clientY);
+      },
+      { passive: true }
+    );
+    col.addEventListener('touchend', onEnd);
+    col.addEventListener('touchcancel', onEnd);
+    col.addEventListener('mousedown', function (e) {
+      onStart(e.clientY);
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!drag.active) return;
+      onMove(e.clientY);
+    });
+    window.addEventListener('mouseup', onEnd);
   }
 
   function openYmPanel() {
