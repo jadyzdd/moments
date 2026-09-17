@@ -622,6 +622,12 @@
     renderFeed();
   }
 
+  function sortNewest(list) {
+    return (list || []).slice().sort(function (a, b) {
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+  }
+
   /* —— Year/Month locator —— */
   var ymPickerYears = [];
   var ymScrollTimers = { year: null, month: null };
