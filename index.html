@@ -7,22 +7,20 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=coverfix1" />
+  <link rel="stylesheet" href="styles.css?v=wxheader1" />
 </head>
 <body>
   <div class="app" id="app">
-    <!-- 顶部封面 -->
+    <!-- 顶部封面（微信朋友圈原版布局：头像骑缝、昵称在封面上、简介在封面下） -->
     <header class="cover" id="cover">
       <div class="cover-bg" aria-hidden="true"></div>
       <button type="button" class="cover-camera" title="更换封面" aria-label="更换封面">📷</button>
       <div class="profile">
-        <div class="profile-text">
-          <h1 class="nickname" id="nickname">小明</h1>
-          <p class="bio" id="bio">记录生活的点滴 · 今天也要开心呀</p>
-        </div>
+        <h1 class="nickname" id="nickname">小明</h1>
         <div class="avatar profile-avatar" id="myAvatar" title="我的头像">明</div>
       </div>
     </header>
+    <p class="bio" id="bio">记录生活的点滴 · 今天也要开心呀</p>
 
     <!-- 动态流 -->
     <main class="feed" id="feed" aria-live="polite"></main>
@@ -249,8 +247,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=coverfix1"></script>
-  <script src="app.js?v=coverfix1"></script>
-  <script src="admin.js?v=coverfix1"></script>
+  <script src="data.js?v=wxheader1"></script>
+  <script src="app.js?v=wxheader1"></script>
+  <script src="admin.js?v=wxheader1"></script>
 </body>
 </html>
