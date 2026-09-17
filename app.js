@@ -868,6 +868,48 @@
     }
   });
 
+
+  /* —— Scroll jump —— */
+  function updateScrollFabs() {
+    var topBtn = els.btnScrollTop;
+    var bottomBtn = els.btnScrollBottom;
+    if (!topBtn || !bottomBtn) return;
+    var y = window.scrollY || document.documentElement.scrollTop || 0;
+    var max = Math.max(
+      0,
+      (document.documentElement.scrollHeight || document.body.scrollHeight) -
+        window.innerHeight
+    );
+    var nearTop = y < 120;
+    var nearBottom = max - y < 160;
+    if (nearTop) topBtn.classList.add('hidden');
+    else topBtn.classList.remove('hidden');
+    if (nearBottom || max < 80) bottomBtn.classList.add('hidden');
+    else bottomBtn.classList.remove('hidden');
+  }
+
+  if (els.btnScrollBottom) {
+    els.btnScrollBottom.addEventListener('click', function () {
+      var footer = document.querySelector('.footer');
+      if (footer && footer.scrollIntoView) {
+        footer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      } else {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: 'smooth',
+        });
+      }
+    });
+  }
+  if (els.btnScrollTop) {
+    els.btnScrollTop.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+  window.addEventListener('scroll', updateScrollFabs, { passive: true });
+  window.addEventListener('resize', updateScrollFabs);
+  updateScrollFabs();
+
   /* —— Init —— */
   // 先本地/示例渲染，再尝试覆盖为 posts.json / profile.json（访客共享源）
   if (!loadFromLocal()) {

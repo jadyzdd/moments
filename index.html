@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=profile2" />
+  <link rel="stylesheet" href="styles.css?v=scroll1" />
 </head>
 <body>
   <div class="app" id="app">
@@ -45,6 +45,10 @@
     </footer>
 
     <!-- 悬浮发布 -->
+    <div class="scroll-fabs" id="scrollFabs">
+      <button type="button" class="scroll-fab hidden" id="btnScrollTop" title="回到顶部" aria-label="回到顶部">↑</button>
+      <button type="button" class="scroll-fab" id="btnScrollBottom" title="直达底部" aria-label="直达底部">↓</button>
+    </div>
     <button type="button" class="fab" id="btnPublish" aria-label="发布">
       <span class="fab-icon">+</span>
       <span class="fab-label">发布</span>
@@ -119,6 +123,7 @@
           <h2>本地管理</h2>
           <p class="admin-count" id="adminCount">共 0 条</p>
         </div>
+        <button type="button" class="admin-header-btn" id="adminScrollBottom" title="直达底部" aria-label="直达底部">↓</button>
         <button type="button" class="admin-header-btn accent" id="adminNew">新建</button>
       </header>
 
@@ -238,8 +243,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=profile2"></script>
-  <script src="app.js?v=profile2"></script>
-  <script src="admin.js?v=profile2"></script>
+  <script src="data.js?v=scroll1"></script>
+  <script src="app.js?v=scroll1"></script>
+  <script src="admin.js?v=scroll1"></script>
 </body>
 </html>

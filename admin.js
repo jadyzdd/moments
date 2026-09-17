@@ -1461,6 +1461,22 @@
       });
     }
 
+
+    if ($('adminScrollBottom')) {
+      $('adminScrollBottom').addEventListener('click', function () {
+        var panel = $('adminPanel');
+        var profile = $('adminProfileSection');
+        var scroller = panel && panel.querySelector('.admin-panel-inner');
+        if (profile && scroller) {
+          scroller.scrollTo({
+            top: profile.offsetTop + profile.offsetHeight,
+            behavior: 'smooth',
+          });
+        } else if (scroller) {
+          scroller.scrollTo({ top: scroller.scrollHeight, behavior: 'smooth' });
+        }
+      });
+    }
     // GitHub sync form
     if ($('ghSaveToken')) {
       $('ghSaveToken').addEventListener('click', promptSaveGhToken);
