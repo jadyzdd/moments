@@ -1079,13 +1079,19 @@
       e.stopPropagation();
       lightboxNext();
     });
+    // 再点一次画面（照片 / 遮罩 / 文案区）即可退出；左右箭头与关闭钮除外
     els.lightbox.addEventListener('click', function (e) {
-      if (e.target === els.lightbox || e.target.classList.contains('lightbox-backdrop')) {
-        closeLightbox();
+      var t = e.target;
+      if (!t) return;
+      if (
+        t === els.lightboxClose ||
+        t === els.lightboxPrev ||
+        t === els.lightboxNext ||
+        (t.closest && t.closest('.lightbox-nav, .lightbox-close'))
+      ) {
+        return;
       }
-    });
-    els.lightboxImg.addEventListener('click', function (e) {
-      e.stopPropagation();
+      closeLightbox();
     });
 
     els.lightbox.addEventListener(
