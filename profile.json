@@ -1,8 +1,8 @@
 {
   "name": "小明",
   "bio": "记录生活的点滴 · 今天也要开心呀",
-  "initial": "明",
-  "coverUrl": "",
+  "initial": "小",
+  "coverUrl": "assets/cover.jpg",
   "avatarUrl": "",
   "coverHue": 200
 }
