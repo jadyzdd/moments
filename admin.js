@@ -1464,14 +1464,10 @@
 
     if ($('adminScrollBottom')) {
       $('adminScrollBottom').addEventListener('click', function () {
-        var panel = $('adminPanel');
         var profile = $('adminProfileSection');
-        var scroller = panel && panel.querySelector('.admin-panel-inner');
-        if (profile && scroller) {
-          scroller.scrollTo({
-            top: profile.offsetTop + profile.offsetHeight,
-            behavior: 'smooth',
-          });
+        var scroller = $('adminPanel') && $('adminPanel').querySelector('.admin-panel-inner');
+        if (profile && profile.scrollIntoView) {
+          profile.scrollIntoView({ behavior: 'smooth', block: 'end' });
         } else if (scroller) {
           scroller.scrollTo({ top: scroller.scrollHeight, behavior: 'smooth' });
         }
