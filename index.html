@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=nolike1" />
+  <link rel="stylesheet" href="styles.css?v=profile1" />
 </head>
 <body>
   <div class="app" id="app">
@@ -131,6 +131,42 @@
         <input type="file" id="adminImportFile" accept="application/json,.json" class="visually-hidden-file" />
       </div>
 
+      <section class="admin-profile" id="adminProfileSection" aria-label="封面与资料">
+        <h3 class="admin-section-title">封面与资料</h3>
+        <label class="admin-field">
+          <span>昵称</span>
+          <input type="text" id="adminProfileName" maxlength="20" placeholder="昵称" />
+        </label>
+        <label class="admin-field">
+          <span>简介</span>
+          <input type="text" id="adminProfileBio" maxlength="60" placeholder="个性签名 / 简介" />
+        </label>
+        <div class="admin-profile-media">
+          <div class="admin-profile-media-col">
+            <span class="admin-profile-label">封面图</span>
+            <div class="admin-profile-preview cover" id="adminCoverPreview" aria-hidden="true"></div>
+            <div class="admin-upload-row">
+              <label class="btn-secondary admin-add-img" for="adminCoverFile">选封面图</label>
+              <button type="button" class="admin-tool muted" id="adminCoverClear">清除</button>
+              <input type="file" id="adminCoverFile" class="visually-hidden-file" accept="image/*" />
+            </div>
+          </div>
+          <div class="admin-profile-media-col">
+            <span class="admin-profile-label">头像</span>
+            <div class="admin-profile-preview avatar" id="adminAvatarPreview" aria-hidden="true">明</div>
+            <div class="admin-upload-row">
+              <label class="btn-secondary admin-add-img" for="adminAvatarFile">选头像</label>
+              <button type="button" class="admin-tool muted" id="adminAvatarClear">清除</button>
+              <input type="file" id="adminAvatarFile" class="visually-hidden-file" accept="image/*" />
+            </div>
+          </div>
+        </div>
+        <p class="admin-img-tip" id="adminProfileTip">保存后仅本机生效；点「同步」才会推送到仓库供访客看到。</p>
+        <div class="admin-profile-actions">
+          <button type="button" class="admin-tool" id="adminProfileSave">保存资料</button>
+        </div>
+      </section>
+
       <section class="gh-sync" id="ghSyncSection" aria-label="同步到 GitHub">
         <input type="hidden" id="ghOwner" value="jadyzdd" />
         <input type="hidden" id="ghRepo" value="moments" />
@@ -201,8 +237,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=nolike1"></script>
-  <script src="app.js?v=nolike1"></script>
-  <script src="admin.js?v=nolike1"></script>
+  <script src="data.js?v=profile1"></script>
+  <script src="app.js?v=profile1"></script>
+  <script src="admin.js?v=profile1"></script>
 </body>
 </html>

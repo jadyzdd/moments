@@ -31,6 +31,8 @@
   var editImages = []; // data URLs currently in editor
   var editingId = null; // null = new post
   var syncing = false;
+  /** Draft profile fields while admin panel is open */
+  var draftProfile = null;
 
   function $(id) {
     return document.getElementById(id);
@@ -231,6 +233,7 @@
     $('adminPanel').classList.remove('hidden');
     document.body.classList.add('admin-open');
     renderAdminList();
+    loadProfileForm();
     loadGhForm();
     updateSyncButtonState();
     renderLastSync();
@@ -500,7 +503,178 @@
     renderAdminList();
   }
 
+  /* —— Profile (cover / name / bio) —— */
+  function setProfileTip(msg, isErr) {
+    var tip = $('adminProfileTip');
+    if (!tip) return;
+    tip.textContent =
+      msg || '保存后仅本机生效；点「同步」才会推送到仓库供访客看到。';
+    tip.style.color = isErr ? '#e64340' : '';
+  }
+
+  function ensureDraftProfile() {
+    if (!draftProfile && App) {
+      draftProfile = App.getProfile();
+    }
+    if (!draftProfile) {
+      draftProfile = {
+        name: '',
+        bio: '',
+        initial: '',
+        coverUrl: '',
+        avatarUrl: '',
+        coverHue: 200,
+      };
+    }
+    return draftProfile;
+  }
+
+  function renderProfilePreviews() {
+    var d = ensureDraftProfile();
+    var coverPrev = $('adminCoverPreview');
+    if (coverPrev) {
+      if (d.coverUrl) {
+        coverPrev.style.backgroundImage =
+          'url("' + String(d.coverUrl).replace(/"/g, '%22') + '")';
+        coverPrev.classList.add('has-image');
+        coverPrev.textContent = '';
+      } else {
+        coverPrev.style.backgroundImage = '';
+        coverPrev.classList.remove('has-image');
+        coverPrev.textContent = '渐变';
+      }
+    }
+    var avPrev = $('adminAvatarPreview');
+    if (avPrev) {
+      if (d.avatarUrl) {
+        avPrev.style.backgroundImage =
+          'url("' + String(d.avatarUrl).replace(/"/g, '%22') + '")';
+        avPrev.classList.add('has-image');
+        avPrev.textContent = '';
+      } else {
+        avPrev.style.backgroundImage = '';
+        avPrev.classList.remove('has-image');
+        avPrev.textContent = d.initial || (d.name ? d.name.slice(0, 1) : '?');
+      }
+    }
+  }
+
+  function loadProfileForm() {
+    if (!App) return;
+    draftProfile = App.getProfile();
+    var nameEl = $('adminProfileName');
+    var bioEl = $('adminProfileBio');
+    if (nameEl) nameEl.value = draftProfile.name || '';
+    if (bioEl) bioEl.value = draftProfile.bio || '';
+    renderProfilePreviews();
+    setProfileTip('', false);
+  }
+
+  function readProfileFieldDraft() {
+    var d = ensureDraftProfile();
+    var nameEl = $('adminProfileName');
+    var bioEl = $('adminProfileBio');
+    if (nameEl) d.name = (nameEl.value || '').trim() || d.name;
+    if (bioEl) d.bio = (bioEl.value || '').trim();
+    d.initial = d.name ? d.name.slice(0, 1) : d.initial || '?';
+    return d;
+  }
+
+  function saveProfileFromForm() {
+    if (!App) return;
+    var d = readProfileFieldDraft();
+    App.setProfile(d);
+    draftProfile = App.getProfile();
+    renderProfilePreviews();
+    setProfileTip('资料已保存到本机。点「同步」推送给访客。', false);
+  }
+
+  function pickProfileImage(kind, file) {
+    if (!file) return Promise.resolve();
+    setProfileTip('正在处理图片…', false);
+    return compressImageFile(file).then(function (url) {
+      if (!url) {
+        setProfileTip('没有可用的图片（请选 JPG/PNG/WebP）', true);
+        return;
+      }
+      if (isRasterDataUrl(url)) {
+        var parsed = parseDataUrl(url);
+        if (parsed && estimateBase64Bytes(parsed.base64) > MAX_FILE_BYTES) {
+          setProfileTip(
+            '图片压缩后仍超过 ' + formatBytes(MAX_FILE_BYTES) + '，请换较小的图',
+            true
+          );
+          return;
+        }
+      }
+      var d = ensureDraftProfile();
+      if (kind === 'cover') d.coverUrl = url;
+      else d.avatarUrl = url;
+      renderProfilePreviews();
+      setProfileTip('已选好图片，请点「保存资料」写入本机。', false);
+    });
+  }
+
+  function clearProfileImage(kind) {
+    var d = ensureDraftProfile();
+    if (kind === 'cover') d.coverUrl = '';
+    else d.avatarUrl = '';
+    renderProfilePreviews();
+    setProfileTip('已清除，请点「保存资料」写入本机。', false);
+  }
+
+  /**
+   * If cover/avatar are raster data URLs, queue uploads to fixed asset paths
+   * and rewrite draft to relative paths for profile.json.
+   */
+  function prepareProfileForSync(prof) {
+    var cloned = JSON.parse(JSON.stringify(prof || {}));
+    var uploads = [];
+    var oversized = [];
+
+    function handle(field, basename) {
+      var val = cloned[field];
+      if (!isRasterDataUrl(val)) return;
+      var parsed = parseDataUrl(val);
+      if (!parsed) return;
+      var size = estimateBase64Bytes(parsed.base64);
+      if (size > MAX_FILE_BYTES) {
+        oversized.push({ field: field, size: size });
+        return;
+      }
+      var ext = extFromMime(parsed.mime);
+      var rel = 'assets/' + basename + '.' + ext;
+      uploads.push({
+        path: rel,
+        content: parsed.base64,
+        size: size,
+        mime: parsed.mime,
+      });
+      cloned[field] = rel;
+    }
+
+    handle('coverUrl', 'cover');
+    handle('avatarUrl', 'avatar');
+
+    // Normalize for public JSON (no savedAt)
+    var out = {
+      name: cloned.name || '',
+      bio: typeof cloned.bio === 'string' ? cloned.bio : '',
+      initial: cloned.initial || (cloned.name ? cloned.name.slice(0, 1) : '?'),
+      coverUrl: cloned.coverUrl || '',
+      avatarUrl: cloned.avatarUrl || '',
+      coverHue: typeof cloned.coverHue === 'number' ? cloned.coverHue : 200,
+    };
+
+    return { profile: out, uploads: uploads, oversized: oversized };
+  }
+
+  function buildProfileJsonText(profileObj) {
+    return JSON.stringify(profileObj, null, 2) + '\n';
+  }
+
   /* —— Export / Import —— */
+
   function exportJson() {
     var payload = {
       version: 1,
@@ -1006,14 +1180,24 @@
     // Defer so the UI can paint "准备同步…" before heavy clone/base64 work
     window.setTimeout(function () {
       var prepared;
+      var preparedProfile;
       var text;
+      var profileText;
       var bytes;
       var uploadCount;
+      var allUploads;
       try {
         setSyncStatus('正在处理本地数据…', 'pending');
+        // Include unsaved draft fields if admin is editing profile
+        if (draftProfile) {
+          readProfileFieldDraft();
+          App.setProfile(draftProfile);
+          draftProfile = App.getProfile();
+        }
         prepared = preparePostsForSync(App.getPosts());
-        if (prepared.oversized.length) {
-          var biggest = prepared.oversized[0].size;
+        preparedProfile = prepareProfileForSync(App.getProfile());
+        if (prepared.oversized.length || preparedProfile.oversized.length) {
+          var biggest = (prepared.oversized[0] || preparedProfile.oversized[0]).size;
           setSyncStatus(
             '有图片超过单文件上限 ' +
               formatBytes(MAX_FILE_BYTES) +
@@ -1027,6 +1211,7 @@
           return;
         }
         text = buildPostsJsonText(prepared.posts);
+        profileText = buildProfileJsonText(preparedProfile.profile);
         bytes = utf8ByteLength(text);
         if (bytes > MAX_POSTS_JSON_BYTES) {
           setSyncStatus(
@@ -1041,15 +1226,16 @@
           updateSyncButtonState();
           return;
         }
-        uploadCount = prepared.uploads.length;
+        allUploads = prepared.uploads.concat(preparedProfile.uploads);
+        uploadCount = allUploads.length;
         if (uploadCount) {
           setSyncStatus(
-            '正在上传 ' + uploadCount + ' 张图片到 ' + UPLOADS_DIR + '/…',
+            '正在上传 ' + uploadCount + ' 张图片…',
             'pending'
           );
         } else {
           setSyncStatus(
-            '正在同步 posts.json…（' + formatBytes(bytes) + '）',
+            '正在同步 posts.json / profile.json…（' + formatBytes(bytes) + '）',
             'pending'
           );
         }
@@ -1065,7 +1251,7 @@
 
       var headers = ghApiHeaders(token);
       uploadFilesSequentially(
-        prepared.uploads,
+        allUploads,
         owner,
         repo,
         branch,
@@ -1103,15 +1289,32 @@
           });
         })
         .then(function () {
+          setSyncStatus('正在更新 profile.json…', 'pending');
+          var apiProfile = ghContentsApi(owner, repo, 'profile.json');
+          return ghGetFileSha(apiProfile, branch, headers).then(function (sha) {
+            return ghPutContent(
+              apiProfile,
+              branch,
+              headers,
+              'Sync profile.json from Moments admin',
+              utf8ToBase64(profileText),
+              sha
+            );
+          });
+        })
+        .then(function () {
           App.setPosts(JSON.parse(text));
+          App.setProfile(JSON.parse(profileText));
+          draftProfile = App.getProfile();
+          loadProfileForm();
           lsSet(GH_LAST_SYNC_KEY, String(Date.now()));
           renderLastSync();
           renderAdminList();
           var msg =
             '同步成功' +
             (uploadCount
-              ? '（上传 ' + uploadCount + ' 张图，并更新 posts.json）'
-              : '（已更新 posts.json）') +
+              ? '（上传 ' + uploadCount + ' 张图，并更新 posts.json / profile.json）'
+              : '（已更新 posts.json / profile.json）') +
             '。约 1 分钟后刷新页面可见。';
           setSyncStatus(msg, 'success');
         })
@@ -1218,6 +1421,45 @@
       if (act === 'right') moveImage(idx, 1);
       if (act === 'remove') removeImage(idx);
     });
+
+    // Profile form
+    if ($('adminProfileSave')) {
+      $('adminProfileSave').addEventListener('click', saveProfileFromForm);
+    }
+    if ($('adminCoverFile')) {
+      $('adminCoverFile').addEventListener('change', function () {
+        var f = this.files && this.files[0];
+        this.value = '';
+        pickProfileImage('cover', f).catch(function (e) {
+          setProfileTip(
+            '读取封面失败' + (e && e.message ? '：' + e.message : ''),
+            true
+          );
+        });
+      });
+    }
+    if ($('adminAvatarFile')) {
+      $('adminAvatarFile').addEventListener('change', function () {
+        var f = this.files && this.files[0];
+        this.value = '';
+        pickProfileImage('avatar', f).catch(function (e) {
+          setProfileTip(
+            '读取头像失败' + (e && e.message ? '：' + e.message : ''),
+            true
+          );
+        });
+      });
+    }
+    if ($('adminCoverClear')) {
+      $('adminCoverClear').addEventListener('click', function () {
+        clearProfileImage('cover');
+      });
+    }
+    if ($('adminAvatarClear')) {
+      $('adminAvatarClear').addEventListener('click', function () {
+        clearProfileImage('avatar');
+      });
+    }
 
     // GitHub sync form
     if ($('ghSaveToken')) {

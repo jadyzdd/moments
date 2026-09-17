@@ -5,8 +5,23 @@
   'use strict';
 
   const STORAGE_KEY = 'moments_feed_v2';
+  const PROFILE_KEY = 'moments_profile_v1';
   const D = window.MomentsData;
-  const ME = D.ME;
+
+  function defaultProfile() {
+    return {
+      name: D.ME.name,
+      bio: D.ME.bio,
+      initial: D.ME.initial || (D.ME.name ? D.ME.name.slice(0, 1) : '?'),
+      coverUrl: '',
+      avatarUrl: '',
+      coverHue: 200,
+    };
+  }
+
+  /** Live profile (nickname / bio / cover / avatar); also used as ME for new posts */
+  let profile = defaultProfile();
+  const ME = profile;
 
   const els = {
     feed: document.getElementById('feed'),
@@ -41,7 +56,6 @@
 
   let posts = [];
   let selectedPhotos = new Set();
-  let coverHue = 200;
 
   /* lightbox state */
   let lbImages = [];
@@ -91,7 +105,10 @@
       const data = JSON.parse(raw);
       if (data && Array.isArray(data.posts)) {
         posts = normalizePosts(data.posts) || [];
-        if (typeof data.coverHue === 'number') coverHue = data.coverHue;
+        // migrate legacy coverHue into profile if profile not yet saved
+        if (typeof data.coverHue === 'number' && !localStorage.getItem(PROFILE_KEY)) {
+          profile.coverHue = data.coverHue;
+        }
         return true;
       }
     } catch (e) {
@@ -108,11 +125,97 @@
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ posts: posts, coverHue: coverHue, savedAt: Date.now() })
+        JSON.stringify({ posts: posts, coverHue: profile.coverHue, savedAt: Date.now() })
       );
     } catch (e) {
       console.warn('save failed', e);
     }
+  }
+
+  function normalizeProfile(raw) {
+    var base = defaultProfile();
+    if (!raw || typeof raw !== 'object') return base;
+    var name = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : base.name;
+    var bio = typeof raw.bio === 'string' ? raw.bio : base.bio;
+    var initial =
+      typeof raw.initial === 'string' && raw.initial.trim()
+        ? raw.initial.trim().slice(0, 2)
+        : name.slice(0, 1);
+    var coverUrl = typeof raw.coverUrl === 'string' ? raw.coverUrl : '';
+    var avatarUrl = typeof raw.avatarUrl === 'string' ? raw.avatarUrl : '';
+    var coverHue =
+      typeof raw.coverHue === 'number' && !isNaN(raw.coverHue) ? raw.coverHue : base.coverHue;
+    return {
+      name: name,
+      bio: bio,
+      initial: initial,
+      coverUrl: coverUrl,
+      avatarUrl: avatarUrl,
+      coverHue: coverHue,
+    };
+  }
+
+  function applyProfileObject(next) {
+    var n = normalizeProfile(next);
+    profile.name = n.name;
+    profile.bio = n.bio;
+    profile.initial = n.initial;
+    profile.coverUrl = n.coverUrl;
+    profile.avatarUrl = n.avatarUrl;
+    profile.coverHue = n.coverHue;
+    return profile;
+  }
+
+  function loadProfileLocal() {
+    try {
+      var raw = localStorage.getItem(PROFILE_KEY);
+      if (!raw) return false;
+      applyProfileObject(JSON.parse(raw));
+      return true;
+    } catch (e) {
+      console.warn('load profile local failed', e);
+      return false;
+    }
+  }
+
+  function saveProfile() {
+    try {
+      localStorage.setItem(
+        PROFILE_KEY,
+        JSON.stringify({
+          name: profile.name,
+          bio: profile.bio,
+          initial: profile.initial,
+          coverUrl: profile.coverUrl || '',
+          avatarUrl: profile.avatarUrl || '',
+          coverHue: profile.coverHue,
+          savedAt: Date.now(),
+        })
+      );
+    } catch (e) {
+      console.warn('save profile failed', e);
+    }
+  }
+
+  /**
+   * 拉取仓库 profile.json（封面/昵称/简介）；成功则写入 localStorage。
+   */
+  function fetchPublishedProfile() {
+    var url = 'profile.json?v=' + Date.now();
+    return fetch(url, { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        applyProfileObject(data);
+        saveProfile();
+        return true;
+      })
+      .catch(function (err) {
+        console.warn('profile.json fetch failed, using local/defaults', err);
+        return false;
+      });
   }
 
   /**
@@ -221,17 +324,50 @@
 
   /* —— Render —— */
   function renderProfile() {
-    els.nickname.textContent = ME.name;
-    els.bio.textContent = ME.bio;
-    els.myAvatar.textContent = ME.initial;
-    els.myAvatar.style.cssText += ';' + D.avatarStyle(ME.name);
+    els.nickname.textContent = profile.name;
+    els.bio.textContent = profile.bio;
+    var av = els.myAvatar;
+    if (profile.avatarUrl) {
+      av.textContent = '';
+      av.classList.add('has-photo');
+      av.style.background = 'transparent';
+      av.style.backgroundImage = 'url("' + profile.avatarUrl.replace(/"/g, '%22') + '")';
+      av.style.backgroundSize = 'cover';
+      av.style.backgroundPosition = 'center';
+    } else {
+      av.classList.remove('has-photo');
+      av.textContent = profile.initial;
+      av.style.backgroundImage = '';
+      av.style.backgroundSize = '';
+      av.style.backgroundPosition = '';
+      av.style.background = '';
+      // avatarStyle returns "background:linear-gradient(...)"
+      var styleFrag = D.avatarStyle(profile.name);
+      var m = /^background:(.*)$/i.exec(styleFrag);
+      av.style.background = m ? m[1] : styleFrag;
+    }
     applyCover();
   }
 
   function applyCover() {
     const bg = els.cover.querySelector('.cover-bg');
     if (!bg) return;
-    const h = coverHue % 360;
+    if (profile.coverUrl) {
+      bg.classList.add('has-image');
+      bg.style.backgroundImage =
+        'linear-gradient(160deg, rgba(0,0,0,0.25) 0%, transparent 45%), url("' +
+        profile.coverUrl.replace(/"/g, '%22') +
+        '")';
+      bg.style.backgroundSize = 'cover';
+      bg.style.backgroundPosition = 'center';
+      bg.style.backgroundColor = '#222';
+      return;
+    }
+    bg.classList.remove('has-image');
+    bg.style.backgroundImage = '';
+    bg.style.backgroundSize = '';
+    bg.style.backgroundPosition = '';
+    const h = profile.coverHue % 360;
     bg.style.background =
       'linear-gradient(160deg, rgba(0,0,0,0.2) 0%, transparent 45%),' +
       'linear-gradient(135deg, hsl(' +
@@ -609,8 +745,12 @@
   const cam = document.querySelector('.cover-camera');
   if (cam) {
     cam.addEventListener('click', function () {
-      coverHue = (coverHue + 47) % 360;
-      applyCover();
+      // 有封面图时点相机只换色无效观感；仍更新 hue 供去掉封面后使用
+      profile.coverHue = (profile.coverHue + 47) % 360;
+      if (!profile.coverUrl) {
+        applyCover();
+      }
+      saveProfile();
       save();
     });
   }
@@ -729,28 +869,51 @@
   });
 
   /* —— Init —— */
-  // 先本地/示例渲染，再尝试覆盖为 posts.json（访客共享源）
+  // 先本地/示例渲染，再尝试覆盖为 posts.json / profile.json（访客共享源）
   if (!loadFromLocal()) {
     loadSeed();
     save();
   }
+  loadProfileLocal();
   renderProfile();
   renderFeed();
 
   fetchPublishedPosts().then(function (ok) {
     if (ok) renderFeed();
   });
+  fetchPublishedProfile().then(function (ok) {
+    if (ok) renderProfile();
+  });
 
   /* Public API for admin panel */
   window.MomentsApp = {
     STORAGE_KEY: STORAGE_KEY,
-    get ME() { return ME; },
+    PROFILE_KEY: PROFILE_KEY,
+    get ME() { return profile; },
     getPosts: function () { return posts; },
     setPosts: function (next) {
       posts = Array.isArray(next) ? next : [];
       save();
       renderFeed();
     },
+    getProfile: function () {
+      return {
+        name: profile.name,
+        bio: profile.bio,
+        initial: profile.initial,
+        coverUrl: profile.coverUrl || '',
+        avatarUrl: profile.avatarUrl || '',
+        coverHue: profile.coverHue,
+      };
+    },
+    setProfile: function (next) {
+      applyProfileObject(next);
+      saveProfile();
+      renderProfile();
+      return profile;
+    },
+    saveProfile: saveProfile,
+    renderProfile: renderProfile,
     save: save,
     renderFeed: renderFeed,
     uid: uid,
@@ -758,5 +921,6 @@
     formatDateYMD: formatDateYMD,
     findPost: findPost,
     fetchPublishedPosts: fetchPublishedPosts,
+    fetchPublishedProfile: fetchPublishedProfile,
   };
 })();
