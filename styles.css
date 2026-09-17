@@ -515,7 +515,7 @@ body {
 .ym-picker-modal {
   padding: 20px 20px calc(16px + var(--safe-bottom));
   max-height: none;
-  overflow: visible;
+  overflow: hidden !important; /* override .modal overflow so year/month cols can scroll */
   border-radius: 16px 16px 0 0;
 }
 
@@ -578,8 +578,10 @@ body {
   flex: 1;
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   scrollbar-width: none;
   overscroll-behavior: contain;
   text-align: center;

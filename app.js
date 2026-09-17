@@ -700,11 +700,23 @@
   }
 
   function getYmSelection() {
-    var yi = ymColIndexFromScroll(els.ymYearCol);
-    var mi = ymColIndexFromScroll(els.ymMonthCol);
-    var year = ymPickerYears[yi];
-    var month = mi + 1; // months 1..12 ascending in list
+    function activeValue(col, fallback) {
+      if (!col) return fallback;
+      var active = col.querySelector('.ym-picker-item.is-active');
+      if (active && active.getAttribute('data-value') != null) {
+        return active.getAttribute('data-value');
+      }
+      var idx = ymColIndexFromScroll(col);
+      var items = col.querySelectorAll('.ym-picker-item');
+      if (items[idx]) return items[idx].getAttribute('data-value');
+      return fallback;
+    }
+    syncYmColActive(els.ymYearCol);
+    syncYmColActive(els.ymMonthCol);
+    var year = parseInt(activeValue(els.ymYearCol, String(new Date().getFullYear())), 10);
+    var month = parseInt(activeValue(els.ymMonthCol, '1'), 10);
     if (!year) year = new Date().getFullYear();
+    if (!month || month < 1 || month > 12) month = 1;
     return { year: year, month: month, key: year + '-' + pad2(month) };
   }
 
@@ -727,46 +739,48 @@
 
   function openYmPanel() {
     if (!els.ymMask) return;
-    var posts = sortNewest(posts);
-    ymPickerYears = buildYmYearList(posts);
+    var list = sortNewest(posts);
+    ymPickerYears = buildYmYearList(list);
     if (!ymPickerYears.length) {
       if (els.ymYearCol) els.ymYearCol.innerHTML = '';
       if (els.ymMonthCol) els.ymMonthCol.innerHTML = '';
       if (els.ymEmptyHint) els.ymEmptyHint.classList.remove('hidden');
       if (els.btnYmConfirm) els.btnYmConfirm.disabled = true;
-    } else {
-      if (els.ymEmptyHint) els.ymEmptyHint.classList.add('hidden');
-      if (els.btnYmConfirm) els.btnYmConfirm.disabled = false;
-      fillYmCol(els.ymYearCol, ymPickerYears, function (y) {
-        return String(y);
-      });
-      var months = [];
-      for (var m = 1; m <= 12; m++) months.push(m);
-      fillYmCol(els.ymMonthCol, months, function (mo) {
-        return pad2(mo);
-      });
-      bindYmColScroll(els.ymYearCol, 'year');
-      bindYmColScroll(els.ymMonthCol, 'month');
-
-      // default: latest post's year/month
-      var defY = ymPickerYears[1] != null ? ymPickerYears[1] : ymPickerYears[0]; // skip pad year
-      var defM = 1;
-      if (posts.length) {
-        var ym = ymFromTs(posts[0].createdAt);
-        defY = ym.year;
-        defM = ym.month;
-      }
-      var yIdx = ymPickerYears.indexOf(defY);
-      if (yIdx < 0) yIdx = 0;
       els.ymMask.classList.remove('hidden');
-      // wait layout then scroll
+      return;
+    }
+    if (els.ymEmptyHint) els.ymEmptyHint.classList.add('hidden');
+    if (els.btnYmConfirm) els.btnYmConfirm.disabled = false;
+    fillYmCol(els.ymYearCol, ymPickerYears, function (y) {
+      return String(y);
+    });
+    var months = [];
+    for (var m = 1; m <= 12; m++) months.push(m);
+    fillYmCol(els.ymMonthCol, months, function (mo) {
+      return pad2(mo);
+    });
+    bindYmColScroll(els.ymYearCol, 'year');
+    bindYmColScroll(els.ymMonthCol, 'month');
+
+    var defY = ymPickerYears[0];
+    var defM = 1;
+    if (list.length) {
+      var ym0 = ymFromTs(list[0].createdAt);
+      defY = ym0.year;
+      defM = ym0.month;
+    }
+    var yIdx = ymPickerYears.indexOf(defY);
+    if (yIdx < 0) yIdx = 0;
+    els.ymMask.classList.remove('hidden');
+    window.requestAnimationFrame(function () {
+      scrollYmColToIndex(els.ymYearCol, yIdx, false);
+      scrollYmColToIndex(els.ymMonthCol, defM - 1, false);
+      // second frame: layout settled
       window.requestAnimationFrame(function () {
         scrollYmColToIndex(els.ymYearCol, yIdx, false);
         scrollYmColToIndex(els.ymMonthCol, defM - 1, false);
       });
-      return;
-    }
-    els.ymMask.classList.remove('hidden');
+    });
   }
 
   function closeYmPanel() {
@@ -779,15 +793,19 @@
     jumpToYm(sel.key);
   }
 
-    function jumpToYm(key) {
+  function jumpToYm(key) {
     closeYmPanel();
-    const anchor =
-      document.querySelector('.post[data-ym="' + key + '"]');
+    var anchor = document.querySelector('.post[data-ym="' + key + '"]');
+    if (!anchor) {
+      // fallback: first post in same year, else nearest by date key
+      var year = String(key).slice(0, 4);
+      anchor = document.querySelector('.post[data-ym^="' + year + '-"]');
+    }
     if (!anchor) {
       showToast('该月暂无动态');
       return;
     }
-    const top = anchor.getBoundingClientRect().top + window.pageYOffset - 8;
+    var top = anchor.getBoundingClientRect().top + window.pageYOffset - 8;
     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   }
 
