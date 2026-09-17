@@ -510,18 +510,21 @@ body {
 
 /* —— WeChat-style year/month drum picker —— */
 .ym-picker-modal {
-  padding: 20px 20px calc(16px + var(--safe-bottom));
+  padding: 16px 20px calc(16px + var(--safe-bottom));
   max-height: none;
   overflow: hidden !important; /* override .modal overflow so year/month cols can scroll */
   border-radius: 16px 16px 0 0;
 }
 
 .ym-picker-title {
-  margin: 0 0 12px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #111;
-  letter-spacing: 0.02em;
+  margin: 4px 0 20px;
+  padding: 0 4px;
+  font-size: 15px;
+  font-weight: 400;
+  color: #888;
+  letter-spacing: 0;
+  text-align: center;
+  line-height: 1.4;
 }
 
 .ym-picker {
