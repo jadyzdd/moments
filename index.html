@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=ymwheel1" />
+  <link rel="stylesheet" href="styles.css?v=adminpub1" />
 </head>
 <body>
   <div class="app" id="app">
@@ -29,7 +29,7 @@
     <div class="empty-state hidden" id="emptyState">
       <div class="empty-icon">🍃</div>
       <p>还没有动态</p>
-      <p class="empty-hint">点右下角「发布」分享第一条，或恢复示例数据</p>
+      <p class="empty-hint">进入底部「管理」→「发布」添加第一条，或恢复示例数据</p>
       <button type="button" class="btn-secondary" id="btnRestoreEmpty">恢复示例</button>
     </div>
 
@@ -42,48 +42,14 @@
       <button type="button" class="footer-link" id="btnAdmin">管理</button>
     </footer>
 
-    <!-- 悬浮发布 -->
+    <!-- 悬浮滚动 -->
     <div class="scroll-fabs" id="scrollFabs">
       <button type="button" class="scroll-fab hidden" id="btnScrollTop" title="回到顶部" aria-label="回到顶部">↑</button>
       <button type="button" class="scroll-fab" id="btnScrollBottom" title="直达底部" aria-label="直达底部">↓</button>
     </div>
-    <button type="button" class="fab" id="btnPublish" aria-label="发布">
-      <span class="fab-icon">+</span>
-      <span class="fab-label">发布</span>
-    </button>
-
     <!-- 年月定位入口（微信朋友圈风格） -->
     <button type="button" class="ym-entry" id="btnYm" aria-label="按年月查找" title="按年月查找">年月</button>
   </div>
-
-  <!-- 发布弹层 -->
-  <div class="modal-mask hidden" id="composeMask" role="dialog" aria-modal="true" aria-labelledby="composeTitle">
-    <div class="modal compose-modal">
-      <div class="modal-header">
-        <button type="button" class="modal-cancel" id="btnComposeCancel">取消</button>
-        <h2 class="modal-title" id="composeTitle">发表动态</h2>
-        <button type="button" class="modal-ok" id="btnComposeSubmit" disabled>发表</button>
-      </div>
-      <textarea
-        id="composeText"
-        class="compose-text"
-        placeholder="这一刻的想法…"
-        maxlength="500"
-        rows="5"
-      ></textarea>
-      <div class="compose-photos" id="composePhotos">
-        <!-- fake photo chips -->
-      </div>
-      <p class="compose-tip">点击色块添加「假照片」（演示用），再点可取消</p>
-      <div class="compose-meta">
-        <label class="compose-loc">
-          <span>📍</span>
-          <input type="text" id="composeLocation" placeholder="所在位置（可选）" maxlength="40" />
-        </label>
-      </div>
-    </div>
-  </div>
-
 
   <!-- 图片灯箱（微信朋友圈风格） -->
   <div class="lightbox hidden" id="lightbox" role="dialog" aria-modal="true" aria-label="图片预览">
@@ -121,7 +87,7 @@
           <h2>本地管理</h2>
           <p class="admin-count" id="adminCount">共 0 条</p>
         </div>
-        <button type="button" class="admin-header-btn accent" id="adminNew">新建</button>
+        <button type="button" class="admin-header-btn accent" id="adminNew">发布</button>
       </header>
 
       <nav class="admin-tabs" id="adminTabs" role="tablist" aria-label="管理分类">
@@ -200,7 +166,7 @@
         <div class="admin-editor-sheet">
           <div class="modal-header">
             <button type="button" class="modal-cancel" id="adminEditCancel">取消</button>
-            <h2 class="modal-title" id="adminEditorTitle">新建动态</h2>
+            <h2 class="modal-title" id="adminEditorTitle">发布动态</h2>
             <button type="button" class="modal-ok" id="adminEditSave">保存</button>
           </div>
           <div class="admin-editor-body">
@@ -255,8 +221,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=ymwheel1"></script>
-  <script src="app.js?v=ymwheel1"></script>
-  <script src="admin.js?v=ymwheel1"></script>
+  <script src="data.js?v=adminpub1"></script>
+  <script src="app.js?v=adminpub1"></script>
+  <script src="admin.js?v=adminpub1"></script>
 </body>
 </html>

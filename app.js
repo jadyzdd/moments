@@ -526,6 +526,16 @@
 
   /* —— Compose —— */
   function openCompose() {
+    /* 发布已迁至管理页「发布」 */
+    if (!els.composeMask) {
+      if (window.MomentsAdmin && typeof window.MomentsAdmin.openNew === 'function') {
+        window.MomentsAdmin.openNew();
+      } else {
+        var adminBtn = document.getElementById('btnAdmin');
+        if (adminBtn) adminBtn.click();
+      }
+      return;
+    }
     selectedPhotos = new Set();
     els.composeText.value = '';
     els.composeLocation.value = '';
@@ -538,10 +548,12 @@
   }
 
   function closeCompose() {
+    if (!els.composeMask) return;
     els.composeMask.classList.add('hidden');
   }
 
   function renderPhotoChips() {
+    if (!els.composePhotos) return;
     els.composePhotos.innerHTML = D.PHOTO_PRESETS.map(function (p) {
       const selected = selectedPhotos.has(p.id) ? ' selected' : '';
       return (
@@ -563,6 +575,7 @@
   }
 
   function updateComposeSubmit() {
+    if (!els.composeText || !els.btnComposeSubmit) return;
     const hasText = els.composeText.value.trim().length > 0;
     const hasPhoto = selectedPhotos.size > 0;
     els.btnComposeSubmit.disabled = !(hasText || hasPhoto);
@@ -787,12 +800,12 @@
     }
   });
 
-  els.btnPublish.addEventListener('click', openCompose);
-  els.btnComposeCancel.addEventListener('click', closeCompose);
-  els.btnComposeSubmit.addEventListener('click', submitCompose);
-  els.composeText.addEventListener('input', updateComposeSubmit);
+  if (els.btnPublish) els.btnPublish.addEventListener('click', openCompose);
+  if (els.btnComposeCancel) els.btnComposeCancel.addEventListener('click', closeCompose);
+  if (els.btnComposeSubmit) els.btnComposeSubmit.addEventListener('click', submitCompose);
+  if (els.composeText) els.composeText.addEventListener('input', updateComposeSubmit);
 
-  els.composePhotos.addEventListener('click', function (e) {
+  if (els.composePhotos) els.composePhotos.addEventListener('click', function (e) {
     const chip = e.target.closest('[data-photo]');
     if (!chip) return;
     const id = chip.getAttribute('data-photo');
@@ -808,9 +821,11 @@
     updateComposeSubmit();
   });
 
-  els.composeMask.addEventListener('click', function (e) {
-    if (e.target === els.composeMask) closeCompose();
-  });
+  if (els.composeMask) {
+    els.composeMask.addEventListener('click', function (e) {
+      if (e.target === els.composeMask) closeCompose();
+    });
+  }
 
 
   els.btnClear.addEventListener('click', clearData);
@@ -928,7 +943,7 @@
         closeYmPanel();
         return;
       }
-      if (!els.composeMask.classList.contains('hidden')) closeCompose();
+      if (els.composeMask && !els.composeMask.classList.contains('hidden')) closeCompose();
     }
   });
 

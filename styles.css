@@ -1789,5 +1789,5 @@ body.admin-open {
 }
 body.admin-open .scroll-fabs,
 body.admin-open .fab {
-  /* keep publish hidden rules if any; scroll fabs hide when admin open via JS */
+  display: none !important;
 }

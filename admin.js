@@ -299,7 +299,7 @@
     $('adminCount').textContent = '共 ' + posts.length + ' 条';
     if (!posts.length) {
       list.innerHTML =
-        '<div class="admin-empty">暂无动态。点上方「新建」添加，或从右下角「发布」写入。</div>';
+        '<div class="admin-empty">暂无动态。点上方「发布」添加一条。</div>';
       return;
     }
     list.innerHTML = posts
@@ -364,7 +364,7 @@
   function openEditor(post) {
     editingId = post ? post.id : null;
     editImages = post && post.images ? post.images.slice() : [];
-    $('adminEditorTitle').textContent = post ? '编辑动态' : '新建动态';
+    $('adminEditorTitle').textContent = post ? '编辑动态' : '发布动态';
     $('adminEditText').value = post ? post.text || '' : '';
     $('adminEditLocation').value = post ? post.location || '' : '';
     $('adminEditDatetime').value = toDatetimeLocalValue(
@@ -1554,6 +1554,19 @@
     }
     bind();
   }
+
+  window.MomentsAdmin = {
+    openNew: function () {
+      if (typeof isUnlocked === 'function' && isUnlocked()) {
+        openAdminPanel();
+        if (typeof setAdminTab === 'function') setAdminTab('posts');
+        openEditor(null);
+        return;
+      }
+      var btn = $('btnAdmin');
+      if (btn) btn.click();
+    },
+  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
