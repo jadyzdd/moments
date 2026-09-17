@@ -143,19 +143,16 @@ body {
   padding: 0 0 22px;
 }
 
-/* 个性签名：头像正下方，白底与内容区一致 */
+/* 个性签名：头像下方，右对齐贴头像右缘 */
 .bio {
   position: relative;
   z-index: 0;
   box-sizing: border-box;
-  /* 与头像同右缘（12px），水平居中对齐头像正下方 */
-  width: 120px;
-  max-width: 46vw;
+  max-width: min(70vw, 280px);
+  width: auto;
   margin: 0 12px 14px auto;
   padding: 24px 0 10px;
-  /* shift left so block centers under 70px avatar (avatar right-aligned at 12px) */
-  transform: translateX(25px);
-  text-align: center;
+  text-align: right;
   color: #888;
   font-size: 12px;
   line-height: 1.4;
