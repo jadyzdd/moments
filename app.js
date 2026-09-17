@@ -46,6 +46,7 @@
     lightboxPrev: document.getElementById('lightboxPrev'),
     lightboxNext: document.getElementById('lightboxNext'),
     lightboxCounter: document.getElementById('lightboxCounter'),
+    lightboxCaption: document.getElementById('lightboxCaption'),
     btnYm: document.getElementById('btnYm'),
     ymMask: document.getElementById('ymMask'),
     ymYearCol: document.getElementById('ymYearCol'),
@@ -65,6 +66,8 @@
   let lbImages = [];
   let lbIndex = 0;
   let lbOpen = false;
+  let lbCaptionText = '';
+  let lbCaptionLoc = '';
   let touchStartX = 0;
   let touchStartY = 0;
   let touchDeltaX = 0;
@@ -474,6 +477,8 @@
     if (!post || !post.images || !post.images.length) return;
     lbImages = post.images.slice(0, 9);
     lbIndex = Math.max(0, Math.min(index | 0, lbImages.length - 1));
+    lbCaptionText = (post.text && String(post.text).trim()) || '';
+    lbCaptionLoc = (post.location && String(post.location).trim()) || '';
     lbOpen = true;
     updateLightboxUI();
     els.lightbox.classList.remove('hidden');
@@ -487,7 +492,13 @@
     document.body.classList.remove('lightbox-open');
     lbImages = [];
     lbIndex = 0;
+    lbCaptionText = '';
+    lbCaptionLoc = '';
     els.lightboxImg.removeAttribute('src');
+    if (els.lightboxCaption) {
+      els.lightboxCaption.textContent = '';
+      els.lightboxCaption.classList.add('hidden');
+    }
   }
 
   function showLightboxIndex(i) {
@@ -514,6 +525,24 @@
     els.lightboxCounter.classList.toggle('hidden', !multi);
     els.lightboxPrev.classList.toggle('hidden', !multi);
     els.lightboxNext.classList.toggle('hidden', !multi);
+    if (els.lightboxCaption) {
+      var hasText = !!lbCaptionText;
+      var hasLoc = !!lbCaptionLoc;
+      if (!hasText && !hasLoc) {
+        els.lightboxCaption.innerHTML = '';
+        els.lightboxCaption.classList.add('hidden');
+      } else {
+        var html = hasText ? escapeHtml(lbCaptionText) : '';
+        if (hasLoc) {
+          html +=
+            '<span class="lightbox-caption-loc">' +
+            escapeHtml(hasText ? '📍 ' + lbCaptionLoc : lbCaptionLoc) +
+            '</span>';
+        }
+        els.lightboxCaption.innerHTML = html;
+        els.lightboxCaption.classList.remove('hidden');
+      }
+    }
   }
 
   /* —— Interactions —— */
