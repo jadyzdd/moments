@@ -52,6 +52,8 @@
     ymEmptyHint: document.getElementById('ymEmptyHint'),
     btnYmClose: document.getElementById('btnYmClose'),
     toast: document.getElementById('toast'),
+    btnScrollTop: document.getElementById('btnScrollTop'),
+    btnScrollBottom: document.getElementById('btnScrollBottom'),
   };
 
   let posts = [];
@@ -870,16 +872,46 @@
 
 
   /* —— Scroll jump —— */
-  function updateScrollFabs() {
-    var topBtn = els.btnScrollTop;
-    var bottomBtn = els.btnScrollBottom;
-    if (!topBtn || !bottomBtn) return;
-    var y = window.scrollY || document.documentElement.scrollTop || 0;
-    var max = Math.max(
-      0,
-      (document.documentElement.scrollHeight || document.body.scrollHeight) -
-        window.innerHeight
+  function getScrollY() {
+    return (
+      window.pageYOffset ||
+      document.documentElement.scrollTop ||
+      document.body.scrollTop ||
+      0
     );
+  }
+
+  function getScrollMax() {
+    var doc = document.documentElement;
+    var body = document.body;
+    var height = Math.max(
+      doc.scrollHeight,
+      body ? body.scrollHeight : 0,
+      doc.offsetHeight,
+      body ? body.offsetHeight : 0
+    );
+    return Math.max(0, height - window.innerHeight);
+  }
+
+  function scrollPageTo(top, behavior) {
+    top = Math.max(0, top || 0);
+    behavior = behavior || 'smooth';
+    try {
+      window.scrollTo({ top: top, left: 0, behavior: behavior });
+    } catch (e) {
+      window.scrollTo(0, top);
+    }
+    // Fallbacks for stubborn mobile WebViews
+    document.documentElement.scrollTop = top;
+    if (document.body) document.body.scrollTop = top;
+  }
+
+  function updateScrollFabs() {
+    var topBtn = els.btnScrollTop || document.getElementById('btnScrollTop');
+    var bottomBtn = els.btnScrollBottom || document.getElementById('btnScrollBottom');
+    if (!topBtn || !bottomBtn) return;
+    var y = getScrollY();
+    var max = getScrollMax();
     var nearTop = y < 120;
     var nearBottom = max - y < 160;
     if (nearTop) topBtn.classList.add('hidden');
@@ -888,27 +920,44 @@
     else bottomBtn.classList.remove('hidden');
   }
 
-  if (els.btnScrollBottom) {
-    els.btnScrollBottom.addEventListener('click', function () {
-      var footer = document.querySelector('.footer');
-      if (footer && footer.scrollIntoView) {
-        footer.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      } else {
-        window.scrollTo({
-          top: document.documentElement.scrollHeight,
-          behavior: 'smooth',
-        });
-      }
-    });
+  function bindScrollFabs() {
+    var topBtn = els.btnScrollTop || document.getElementById('btnScrollTop');
+    var bottomBtn = els.btnScrollBottom || document.getElementById('btnScrollBottom');
+    if (bottomBtn && !bottomBtn.getAttribute('data-bound')) {
+      bottomBtn.setAttribute('data-bound', '1');
+      bottomBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var footer = document.querySelector('.footer');
+        var max = getScrollMax();
+        scrollPageTo(max, 'smooth');
+        if (footer) {
+          try {
+            footer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          } catch (err) {}
+        }
+        // ensure after layout/smooth settles
+        window.setTimeout(function () {
+          scrollPageTo(getScrollMax(), 'auto');
+          updateScrollFabs();
+        }, 400);
+      });
+    }
+    if (topBtn && !topBtn.getAttribute('data-bound')) {
+      topBtn.setAttribute('data-bound', '1');
+      topBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        scrollPageTo(0, 'smooth');
+        window.setTimeout(updateScrollFabs, 400);
+      });
+    }
+    window.addEventListener('scroll', updateScrollFabs, { passive: true });
+    window.addEventListener('resize', updateScrollFabs);
+    updateScrollFabs();
   }
-  if (els.btnScrollTop) {
-    els.btnScrollTop.addEventListener('click', function () {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  }
-  window.addEventListener('scroll', updateScrollFabs, { passive: true });
-  window.addEventListener('resize', updateScrollFabs);
-  updateScrollFabs();
+
+  bindScrollFabs();
 
   /* —— Init —— */
   // 先本地/示例渲染，再尝试覆盖为 posts.json / profile.json（访客共享源）
