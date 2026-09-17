@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=profile1" />
+  <link rel="stylesheet" href="styles.css?v=profile2" />
 </head>
 <body>
   <div class="app" id="app">
@@ -131,6 +131,24 @@
         <input type="file" id="adminImportFile" accept="application/json,.json" class="visually-hidden-file" />
       </div>
 
+      <section class="gh-sync" id="ghSyncSection" aria-label="同步到 GitHub">
+        <input type="hidden" id="ghOwner" value="jadyzdd" />
+        <input type="hidden" id="ghRepo" value="moments" />
+        <input type="hidden" id="ghBranch" value="main" />
+        <!-- Token UI removed; stored in localStorage. 「保存」用弹窗更新。 -->
+        <input type="password" id="ghToken" class="visually-hidden-file" value="" tabindex="-1" aria-hidden="true" autocomplete="off" />
+        <div class="gh-actions gh-actions-only">
+          <button type="button" class="admin-tool" id="ghSaveToken">保存令牌</button>
+          <button type="button" class="admin-tool muted" id="ghClearToken" title="仅清除本机 Token，不会改仓库">清除令牌</button>
+          <button type="button" class="gh-sync-btn" id="ghSyncBtn">同步</button>
+        </div>
+        <p class="gh-token-state" id="ghTokenState"></p>
+        <p class="gh-last-sync" id="ghLastSync">尚未同步</p>
+        <p class="gh-sync-status hidden" id="ghSyncStatus" role="status" aria-live="polite"></p>
+      </section>
+
+      <div class="admin-list" id="adminList"></div>
+
       <section class="admin-profile" id="adminProfileSection" aria-label="封面与资料">
         <h3 class="admin-section-title">封面与资料</h3>
         <label class="admin-field">
@@ -167,23 +185,6 @@
         </div>
       </section>
 
-      <section class="gh-sync" id="ghSyncSection" aria-label="同步到 GitHub">
-        <input type="hidden" id="ghOwner" value="jadyzdd" />
-        <input type="hidden" id="ghRepo" value="moments" />
-        <input type="hidden" id="ghBranch" value="main" />
-        <!-- Token UI removed; stored in localStorage. 「保存」用弹窗更新。 -->
-        <input type="password" id="ghToken" class="visually-hidden-file" value="" tabindex="-1" aria-hidden="true" autocomplete="off" />
-        <div class="gh-actions gh-actions-only">
-          <button type="button" class="admin-tool" id="ghSaveToken">保存令牌</button>
-          <button type="button" class="admin-tool muted" id="ghClearToken" title="仅清除本机 Token，不会改仓库">清除令牌</button>
-          <button type="button" class="gh-sync-btn" id="ghSyncBtn">同步</button>
-        </div>
-        <p class="gh-token-state" id="ghTokenState"></p>
-        <p class="gh-last-sync" id="ghLastSync">尚未同步</p>
-        <p class="gh-sync-status hidden" id="ghSyncStatus" role="status" aria-live="polite"></p>
-      </section>
-
-      <div class="admin-list" id="adminList"></div>
 
       <!-- 编辑/新建表单 -->
       <div class="admin-editor hidden" id="adminEditor">
@@ -237,8 +238,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=profile1"></script>
-  <script src="app.js?v=profile1"></script>
-  <script src="admin.js?v=profile1"></script>
+  <script src="data.js?v=profile2"></script>
+  <script src="app.js?v=profile2"></script>
+  <script src="admin.js?v=profile2"></script>
 </body>
 </html>
