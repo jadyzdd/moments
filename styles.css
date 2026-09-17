@@ -74,6 +74,7 @@ body {
   height: var(--cover-h);
   margin-bottom: 0;
   z-index: 1;
+  overflow: visible;
 }
 
 .cover-bg {
@@ -111,7 +112,7 @@ body {
 .profile {
   position: absolute;
   right: 12px;
-  bottom: -18px;
+  bottom: -20px;
   left: auto;
   display: flex;
   align-items: flex-end;
@@ -147,17 +148,18 @@ body {
   position: relative;
   z-index: 0;
   margin: 0;
-  padding: 10px 100px 14px 16px;
+  /* right pad clears avatar; top pad sits under cover edge (avatar hangs into this strip) */
+  padding: 8px 100px 16px 16px;
   text-align: right;
-  color: #737373;
+  color: #888;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.35;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  background: transparent;
+  background: var(--bg);
   text-shadow: none;
-  min-height: 22px;
+  min-height: 28px;
 }
 
 .avatar {
@@ -483,14 +485,7 @@ body {
 }
 
 .ym-sticky {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: rgba(237, 237, 237, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 8px 16px 6px;
-  border-bottom: 1px solid var(--border);
+  display: none !important;
 }
 
 .ym-sticky-label {
@@ -822,8 +817,15 @@ body {
   }
   .app {
     border-radius: 12px;
-    overflow: hidden;
+    /* visible so avatar can hang below cover (WeChat style); round top via cover only */
+    overflow: visible;
     min-height: calc(100dvh - 48px);
+  }
+  .cover {
+    border-radius: 12px 12px 0 0;
+  }
+  .cover-bg {
+    border-radius: 12px 12px 0 0;
   }
 }
 

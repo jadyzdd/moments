@@ -393,20 +393,8 @@
     if (els.btnYm) els.btnYm.classList.remove('hidden');
 
     let html = '';
-    let lastKey = null;
     posts.forEach(function (post) {
       const ym = ymFromTs(post.createdAt);
-      if (ym.key !== lastKey) {
-        html +=
-          '<div class="ym-sticky" data-ym="' +
-          escapeHtml(ym.key) +
-          '" id="ym-anchor-' +
-          escapeHtml(ym.key) +
-          '"><span class="ym-sticky-label">' +
-          escapeHtml(ym.label) +
-          '</span></div>';
-        lastKey = ym.key;
-      }
       html += renderPost(post, ym.key);
     });
     els.feed.innerHTML = html;
@@ -695,8 +683,7 @@
   function jumpToYm(key) {
     closeYmPanel();
     const anchor =
-      document.getElementById('ym-anchor-' + key) ||
-      document.querySelector('.post[data-ym="' + key + '"], .ym-sticky[data-ym="' + key + '"]');
+      document.querySelector('.post[data-ym="' + key + '"]');
     if (!anchor) {
       showToast('该月暂无动态');
       return;
