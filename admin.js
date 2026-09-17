@@ -228,10 +228,57 @@
   }
 
   /* —— Admin panel list —— */
+  var adminActiveTab = 'posts';
+
+  function setAdminTab(tab) {
+    adminActiveTab = tab === 'profile' ? 'profile' : 'posts';
+    var tabPosts = $('adminTabPosts');
+    var tabProfile = $('adminTabProfile');
+    var panelPosts = $('adminPanelPosts');
+    var panelProfile = $('adminPanelProfile');
+    var inner = $('adminPanel') && $('adminPanel').querySelector('.admin-panel-inner');
+    var isPosts = adminActiveTab === 'posts';
+    if (tabPosts) {
+      tabPosts.classList.toggle('is-active', isPosts);
+      tabPosts.setAttribute('aria-selected', isPosts ? 'true' : 'false');
+    }
+    if (tabProfile) {
+      tabProfile.classList.toggle('is-active', !isPosts);
+      tabProfile.setAttribute('aria-selected', !isPosts ? 'true' : 'false');
+    }
+    if (panelPosts) {
+      panelPosts.classList.toggle('hidden', !isPosts);
+      if (isPosts) panelPosts.removeAttribute('hidden');
+      else panelPosts.setAttribute('hidden', '');
+    }
+    if (panelProfile) {
+      panelProfile.classList.toggle('hidden', isPosts);
+      if (!isPosts) panelProfile.removeAttribute('hidden');
+      else panelProfile.setAttribute('hidden', '');
+    }
+    if (inner) {
+      inner.classList.toggle('tab-profile', !isPosts);
+      inner.classList.toggle('tab-posts', isPosts);
+    }
+    var newBtn = $('adminNew');
+    if (newBtn) {
+      newBtn.classList.toggle('hidden', !isPosts);
+      newBtn.disabled = !isPosts;
+    }
+    var count = $('adminCount');
+    if (count) {
+      count.style.visibility = isPosts ? '' : 'hidden';
+    }
+    if (!isPosts) {
+      loadProfileForm();
+    }
+  }
+
   function openAdminPanel() {
     closeEditor();
     $('adminPanel').classList.remove('hidden');
     document.body.classList.add('admin-open');
+    setAdminTab(adminActiveTab || 'posts');
     renderAdminList();
     loadProfileForm();
     loadGhForm();
@@ -1462,15 +1509,14 @@
     }
 
 
-    if ($('adminScrollBottom')) {
-      $('adminScrollBottom').addEventListener('click', function () {
-        var profile = $('adminProfileSection');
-        var scroller = $('adminPanel') && $('adminPanel').querySelector('.admin-panel-inner');
-        if (profile && profile.scrollIntoView) {
-          profile.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        } else if (scroller) {
-          scroller.scrollTo({ top: scroller.scrollHeight, behavior: 'smooth' });
-        }
+    if ($('adminTabPosts')) {
+      $('adminTabPosts').addEventListener('click', function () {
+        setAdminTab('posts');
+      });
+    }
+    if ($('adminTabProfile')) {
+      $('adminTabProfile').addEventListener('click', function () {
+        setAdminTab('profile');
       });
     }
     // GitHub sync form
