@@ -24,10 +24,6 @@
     composeLocation: document.getElementById('composeLocation'),
     btnComposeCancel: document.getElementById('btnComposeCancel'),
     btnComposeSubmit: document.getElementById('btnComposeSubmit'),
-    commentMask: document.getElementById('commentMask'),
-    commentText: document.getElementById('commentText'),
-    btnCommentCancel: document.getElementById('btnCommentCancel'),
-    btnCommentSubmit: document.getElementById('btnCommentSubmit'),
     cover: document.getElementById('cover'),
     lightbox: document.getElementById('lightbox'),
     lightboxImg: document.getElementById('lightboxImg'),
@@ -45,7 +41,6 @@
 
   let posts = [];
   let selectedPhotos = new Set();
-  let commentTargetId = null;
   let coverHue = 200;
 
   /* lightbox state */
@@ -325,40 +320,6 @@
           '</div>'
         : '';
 
-    const likes = post.likes || [];
-    const comments = post.comments || [];
-    let social = '';
-    if (likes.length || comments.length) {
-      let likesRow = '';
-      if (likes.length) {
-        likesRow =
-          '<div class="likes-row"><span class="heart-icon">♥</span><span class="likes-names">' +
-          escapeHtml(likes.join('、')) +
-          '</span></div>';
-      }
-      let commentsHtml = '';
-      if (comments.length) {
-        commentsHtml =
-          '<div class="comments-list">' +
-          comments
-            .map(function (c) {
-              return (
-                '<div class="comment-item"><span class="comment-name">' +
-                escapeHtml(c.name) +
-                '</span><span class="comment-sep">：</span><span class="comment-content">' +
-                escapeHtml(c.text) +
-                '</span></div>'
-              );
-            })
-            .join('') +
-          '</div>';
-      }
-      social = '<div class="social-box">' + likesRow + commentsHtml + '</div>';
-    }
-
-    const likedClass = post.likedByMe ? ' liked' : '';
-    const heart = post.likedByMe ? '♥' : '♡';
-
     const locRaw = (post.location || '').trim();
     const nameHtml = locRaw
       ? '<div class="post-name post-location">' + escapeHtml(locRaw) + '</div>'
@@ -376,17 +337,6 @@
       nameHtml +
       (post.text ? '<div class="post-text">' + escapeHtml(post.text) + '</div>' : '') +
       imagesHtml +
-      '<div class="post-meta">' +
-      '<div class="post-meta-spacer" aria-hidden="true"></div>' +
-      '<div class="post-actions">' +
-      '<button type="button" class="action-btn' +
-      likedClass +
-      '" data-action="like" title="赞" aria-label="赞"><span class="heart">' +
-      heart +
-      '</span></button>' +
-      '<button type="button" class="action-btn" data-action="comment" title="评论" aria-label="评论">💬</button>' +
-      '</div></div>' +
-      social +
       '</div></div></article>'
     );
   }
@@ -445,51 +395,6 @@
       if (posts[i].id === id) return posts[i];
     }
     return null;
-  }
-
-  function toggleLike(id) {
-    const post = findPost(id);
-    if (!post) return;
-    post.likes = post.likes || [];
-    if (post.likedByMe) {
-      post.likedByMe = false;
-      post.likes = post.likes.filter(function (n) {
-        return n !== ME.name;
-      });
-    } else {
-      post.likedByMe = true;
-      if (post.likes.indexOf(ME.name) === -1) post.likes.push(ME.name);
-    }
-    save();
-    renderFeed();
-  }
-
-  function openComment(id) {
-    commentTargetId = id;
-    els.commentText.value = '';
-    els.btnCommentSubmit.disabled = true;
-    els.commentMask.classList.remove('hidden');
-    setTimeout(function () {
-      els.commentText.focus();
-    }, 100);
-  }
-
-  function submitComment() {
-    const text = els.commentText.value.trim();
-    if (!text || !commentTargetId) return;
-    const post = findPost(commentTargetId);
-    if (!post) return;
-    post.comments = post.comments || [];
-    post.comments.push({ id: uid('c'), name: ME.name, text: text });
-    save();
-    closeComment();
-    renderFeed();
-  }
-
-  function closeComment() {
-    els.commentMask.classList.add('hidden');
-    commentTargetId = null;
-    els.commentText.value = '';
   }
 
   /* —— Compose —— */
@@ -668,16 +573,7 @@
     if (img) {
       e.preventDefault();
       openLightbox(img.getAttribute('data-post-id'), parseInt(img.getAttribute('data-img-index'), 10) || 0);
-      return;
     }
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const article = btn.closest('.post');
-    if (!article) return;
-    const id = article.getAttribute('data-id');
-    const action = btn.getAttribute('data-action');
-    if (action === 'like') toggleLike(id);
-    if (action === 'comment') openComment(id);
   });
 
   els.btnPublish.addEventListener('click', openCompose);
@@ -705,14 +601,6 @@
     if (e.target === els.composeMask) closeCompose();
   });
 
-  els.btnCommentCancel.addEventListener('click', closeComment);
-  els.btnCommentSubmit.addEventListener('click', submitComment);
-  els.commentText.addEventListener('input', function () {
-    els.btnCommentSubmit.disabled = !els.commentText.value.trim();
-  });
-  els.commentMask.addEventListener('click', function (e) {
-    if (e.target === els.commentMask) closeComment();
-  });
 
   els.btnClear.addEventListener('click', clearData);
   els.btnRestore.addEventListener('click', restoreSeed);
@@ -837,7 +725,6 @@
         return;
       }
       if (!els.composeMask.classList.contains('hidden')) closeCompose();
-      if (!els.commentMask.classList.contains('hidden')) closeComment();
     }
   });
 

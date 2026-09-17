@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=album6" />
+  <link rel="stylesheet" href="styles.css?v=nolike1" />
 </head>
 <body>
   <div class="app" id="app">
@@ -79,24 +79,6 @@
           <input type="text" id="composeLocation" placeholder="所在位置（可选）" maxlength="40" />
         </label>
       </div>
-    </div>
-  </div>
-
-  <!-- 评论弹层（移动端友好） -->
-  <div class="modal-mask hidden" id="commentMask" role="dialog" aria-modal="true">
-    <div class="modal comment-modal">
-      <div class="modal-header">
-        <button type="button" class="modal-cancel" id="btnCommentCancel">取消</button>
-        <h2 class="modal-title">评论</h2>
-        <button type="button" class="modal-ok" id="btnCommentSubmit" disabled>发送</button>
-      </div>
-      <textarea
-        id="commentText"
-        class="compose-text"
-        placeholder="友善发言…"
-        maxlength="200"
-        rows="3"
-      ></textarea>
     </div>
   </div>
 
@@ -219,8 +201,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=album6"></script>
-  <script src="app.js?v=album6"></script>
-  <script src="admin.js?v=album6"></script>
+  <script src="data.js?v=nolike1"></script>
+  <script src="app.js?v=nolike1"></script>
+  <script src="admin.js?v=nolike1"></script>
 </body>
 </html>

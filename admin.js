@@ -256,8 +256,6 @@
       .map(function (p) {
         var d = App.formatDateYMD(p.createdAt);
         var loc = (p.location || '').trim() || '未标注地点';
-        var likes = (p.likes && p.likes.length) || 0;
-        var comments = (p.comments && p.comments.length) || 0;
         var thumbs = (p.images || [])
           .slice(0, 4)
           .map(function (src) {
@@ -293,11 +291,6 @@
           (thumbs
             ? '<div class="admin-item-thumbs">' + thumbs + more + '</div>'
             : '') +
-          '<div class="admin-item-stats">♥ ' +
-          likes +
-          ' · 💬 ' +
-          comments +
-          '</div>' +
           '</div>' +
           '<div class="admin-item-actions">' +
           '<button type="button" class="admin-btn-sm" data-admin-act="edit">编辑</button>' +

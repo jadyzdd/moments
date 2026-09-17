@@ -226,10 +226,6 @@ body {
   font-size: 11px;
 }
 
-.post-meta-spacer {
-  flex: 1;
-}
-
 /* —— Feed —— */
 .feed {
   padding: 0;
@@ -340,129 +336,6 @@ body {
 .svg-ph {
   width: 100%;
   height: 100%;
-}
-
-.post-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 4px;
-  margin-bottom: 6px;
-}
-
-.post-time-loc {
-  font-size: 12px;
-  color: var(--text-secondary);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.post-loc {
-  color: var(--text-link);
-}
-
-.post-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.action-btn {
-  border: none;
-  background: var(--like-bg);
-  color: var(--text-link);
-  width: 32px;
-  height: 22px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, transform 0.15s;
-}
-
-.action-btn:active {
-  transform: scale(0.92);
-}
-
-.action-btn.liked {
-  color: #e64340;
-}
-
-.action-btn.liked .heart {
-  animation: heartPop 0.35s ease;
-}
-
-@keyframes heartPop {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.35); }
-  100% { transform: scale(1); }
-}
-
-/* Likes + comments box */
-.social-box {
-  background: var(--like-bg);
-  border-radius: 4px;
-  font-size: 13px;
-  margin-top: 4px;
-  overflow: hidden;
-}
-
-.likes-row {
-  padding: 6px 10px;
-  color: var(--text-link);
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
-  line-height: 1.4;
-}
-
-.likes-row .heart-icon {
-  flex-shrink: 0;
-  color: #e64340;
-  margin-top: 1px;
-}
-
-.likes-names {
-  word-break: break-all;
-}
-
-.comments-list {
-  border-top: 1px solid #e8e8ea;
-  padding: 4px 10px 6px;
-}
-
-.comments-list:empty {
-  display: none;
-}
-
-.likes-row + .comments-list:not(:empty) {
-  border-top: 1px solid #e8e8ea;
-}
-
-.comment-item {
-  padding: 2px 0;
-  line-height: 1.45;
-  word-break: break-word;
-}
-
-.comment-name {
-  color: var(--text-link);
-  font-weight: 600;
-}
-
-.comment-sep {
-  color: var(--text);
-}
-
-.comment-content {
-  color: var(--text);
-}
-
-.social-box:empty {
-  display: none;
 }
 
 /* Empty */
@@ -1292,10 +1165,6 @@ body.admin-open {
   padding: 0 4px;
 }
 
-.admin-item-stats {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
 
 .admin-item-actions {
   display: flex;

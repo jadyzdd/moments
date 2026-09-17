@@ -2,12 +2,12 @@
 
 类似微信朋友圈的日常生活可分享网页。
 
-纯静态、无需构建：打开即可浏览动态；点赞、评论、本地编辑保存在浏览器 `localStorage`。通过管理面板「同步到 GitHub」可将动态写入仓库的 `posts.json`，让 GitHub Pages 访客看到同一份内容。
+纯静态、无需构建：打开即可浏览动态；本地编辑保存在浏览器 `localStorage`。通过管理面板「同步到 GitHub」可将动态写入仓库的 `posts.json`，让 GitHub Pages 访客看到同一份内容。**点赞与评论已从前端 UI 移除**（历史字段可仍存在于数据中，但不展示、不可交互）。
 
 ## 功能
 
 - 顶部封面与个人简介
-- 朋友圈风格信息流（图文九宫格、点赞、评论）
+- 朋友圈风格信息流（图文九宫格；点赞/评论 UI 已移除）
 - **年月定位**：右侧「年月」入口，按有动态的年份/月份跳转到对应段落（类似微信朋友圈相册时间索引）
 - 右下角「发布」：写文字、选假照片色块、填位置
 - **本地管理面板**：密码解锁后可新建 / 编辑 / 删除动态，上传真实照片（自动压缩），修改地点与日期
@@ -89,13 +89,13 @@ python3 -m http.server 8080
 
 | 角色 | 读什么 | 写什么 |
 |------|--------|--------|
-| 访客（Pages） | `posts.json` → 写入本机 localStorage 以便离线 | 仅本机点赞/评论（不同步回仓库，除非你再点同步） |
+| 访客（Pages） | `posts.json` → 写入本机 localStorage 以便离线 | 本机浏览/缓存（发布与管理通过面板同步回仓库） |
 | 管理员 | 编辑 localStorage（可含临时 data URL） | 「同步到 GitHub」先 PUT 新图到 `assets/uploads/`，再 PUT 更新 `posts.json` |
 
 ## 技术说明
 
 - 仅 HTML / CSS / JS，无 npm、无框架、无打包
-- 发布源：`posts.json`（数组，字段：`id, author, text, images[], location, likes, likedByMe, comments, createdAt`）
+- 发布源：`posts.json`（数组，字段：`id, author, text, images[], location, createdAt`；历史 `likes` / `likedByMe` / `comments` 可存在但 UI 忽略）
 - `images[]` 优先为 `assets/uploads/...` 或 `assets/...` 相对路径；同步时会把光栅 data URL 抽成文件
 - 示例种子见 `data.js`；交互见 `app.js`；管理 / 同步见 `admin.js`
 - 勿把真实 Token 提交进仓库
