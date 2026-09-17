@@ -511,106 +511,148 @@ body {
   vertical-align: -1px;
 }
 
-.ym-modal {
-  max-height: 70dvh;
+/* —— WeChat-style year/month drum picker —— */
+.ym-picker-modal {
+  padding: 20px 20px calc(16px + var(--safe-bottom));
+  max-height: none;
+  overflow: visible;
+  border-radius: 16px 16px 0 0;
 }
 
-.modal-header-spacer {
-  width: 48px;
-  flex-shrink: 0;
+.ym-picker-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+  letter-spacing: 0.02em;
 }
 
-.ym-list {
-  padding: 4px 12px 12px;
-  max-height: calc(70dvh - 56px);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.ym-year-block {
-  margin-bottom: 6px;
-  border-radius: var(--radius);
-  background: var(--like-bg);
+.ym-picker {
+  position: relative;
+  height: 220px;
+  margin: 4px 0 18px;
   overflow: hidden;
 }
 
-.ym-year-block.open {
-  background: #eefaf3;
-  box-shadow: inset 0 0 0 1px rgba(7, 193, 96, 0.25);
+.ym-picker-highlight {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  margin-top: -22px;
+  border-radius: 10px;
+  background: #f2f2f2;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.ym-year-btn {
-  width: 100%;
+.ym-picker-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 72px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ym-picker-fade-top {
+  top: 0;
+  background: linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.ym-picker-fade-bottom {
+  bottom: 0;
+  background: linear-gradient(0deg, #fff 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.ym-picker-cols {
+  position: relative;
+  z-index: 1;
   display: flex;
-  align-items: center;
+  height: 100%;
   gap: 8px;
-  border: none;
-  background: transparent;
-  padding: 14px 14px;
-  cursor: pointer;
-  text-align: left;
-  color: var(--text);
-  font-size: 16px;
-  font-weight: 600;
 }
 
-.ym-year-btn:active {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.ym-year-label {
+.ym-picker-col {
   flex: 1;
-}
-
-.ym-year-meta {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--text-secondary);
-}
-
-.ym-year-chevron {
-  font-size: 12px;
-  color: var(--text-secondary);
-  width: 1em;
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
   text-align: center;
 }
 
-.ym-months {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding: 0 12px 14px;
+.ym-picker-col::-webkit-scrollbar {
+  display: none;
 }
 
-.ym-month-btn {
-  border: none;
-  border-radius: 20px;
-  background: #fff;
-  color: var(--text);
-  font-size: 14px;
+.ym-picker-item {
+  height: 44px;
+  line-height: 44px;
+  scroll-snap-align: center;
+  font-size: 17px;
   font-weight: 500;
-  padding: 10px 0;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  transition: background 0.15s, color 0.15s, transform 0.12s;
+  color: #c8c8c8;
+  transition: color 0.15s, font-size 0.15s;
+  user-select: none;
 }
 
-.ym-month-btn:hover {
+.ym-picker-item.is-active {
+  color: #111;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.ym-picker-spacer {
+  height: 88px; /* 2 * item height — lets first/last snap to center */
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.ym-picker-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.ym-picker-cancel,
+.ym-picker-confirm {
+  flex: 1;
+  border: none;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 14px 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ym-picker-cancel {
+  background: #f2f2f2;
+  color: #111;
+}
+
+.ym-picker-cancel:active {
+  background: #e8e8e8;
+}
+
+.ym-picker-confirm {
   background: var(--wx-green);
   color: #fff;
 }
 
-.ym-month-btn:active {
-  transform: scale(0.96);
+.ym-picker-confirm:active {
   background: var(--wx-green-pressed);
-  color: #fff;
 }
 
 .ym-empty-hint {
   text-align: center;
   color: var(--text-secondary);
   font-size: 13px;
-  padding: 24px 16px 32px;
+  padding: 8px 0 16px;
 }
 
 .toast {

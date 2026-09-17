@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=biounder1" />
+  <link rel="stylesheet" href="styles.css?v=ymwheel1" />
 </head>
 <body>
   <div class="app" id="app">
@@ -231,24 +231,32 @@
     </div>
   </div>
 
-  <!-- 年月选择面板 -->
+  <!-- 年月选择（微信原版滚轮） -->
   <div class="modal-mask hidden" id="ymMask" role="dialog" aria-modal="true" aria-labelledby="ymTitle">
-    <div class="modal ym-modal">
-      <div class="modal-header">
-        <button type="button" class="modal-cancel" id="btnYmClose">关闭</button>
-        <h2 class="modal-title" id="ymTitle">选择年月</h2>
-        <span class="modal-header-spacer" aria-hidden="true"></span>
+    <div class="modal ym-picker-modal">
+      <h2 class="ym-picker-title" id="ymTitle">请选择发表的日期</h2>
+      <div class="ym-picker" id="ymPicker">
+        <div class="ym-picker-highlight" aria-hidden="true"></div>
+        <div class="ym-picker-fade ym-picker-fade-top" aria-hidden="true"></div>
+        <div class="ym-picker-fade ym-picker-fade-bottom" aria-hidden="true"></div>
+        <div class="ym-picker-cols">
+          <div class="ym-picker-col" id="ymYearCol" tabindex="0" role="listbox" aria-label="年"></div>
+          <div class="ym-picker-col" id="ymMonthCol" tabindex="0" role="listbox" aria-label="月"></div>
+        </div>
       </div>
-      <div class="ym-list" id="ymList"></div>
       <p class="ym-empty-hint hidden" id="ymEmptyHint">暂无动态可定位</p>
+      <div class="ym-picker-actions">
+        <button type="button" class="ym-picker-cancel" id="btnYmClose">取消</button>
+        <button type="button" class="ym-picker-confirm" id="btnYmConfirm">确定</button>
+      </div>
     </div>
   </div>
 
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=biounder1"></script>
-  <script src="app.js?v=biounder1"></script>
-  <script src="admin.js?v=biounder1"></script>
+  <script src="data.js?v=ymwheel1"></script>
+  <script src="app.js?v=ymwheel1"></script>
+  <script src="admin.js?v=ymwheel1"></script>
 </body>
 </html>

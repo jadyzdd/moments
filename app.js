@@ -48,9 +48,11 @@
     lightboxCounter: document.getElementById('lightboxCounter'),
     btnYm: document.getElementById('btnYm'),
     ymMask: document.getElementById('ymMask'),
-    ymList: document.getElementById('ymList'),
+    ymYearCol: document.getElementById('ymYearCol'),
+    ymMonthCol: document.getElementById('ymMonthCol'),
     ymEmptyHint: document.getElementById('ymEmptyHint'),
     btnYmClose: document.getElementById('btnYmClose'),
+    btnYmConfirm: document.getElementById('btnYmConfirm'),
     toast: document.getElementById('toast'),
     btnScrollTop: document.getElementById('btnScrollTop'),
     btnScrollBottom: document.getElementById('btnScrollBottom'),
@@ -67,7 +69,6 @@
   let touchStartY = 0;
   let touchDeltaX = 0;
   let toastTimer = null;
-  let ymExpandedYear = null;
 
   function normalizePosts(list) {
     if (!Array.isArray(list)) return null;
@@ -609,69 +610,149 @@
   }
 
   /* —— Year/Month locator —— */
+  var ymPickerYears = [];
+  var ymScrollTimers = { year: null, month: null };
+  var YM_ITEM_H = 44;
+
+  function pad2(n) {
+    n = Number(n);
+    return n < 10 ? '0' + n : String(n);
+  }
+
   function renderYmPanel() {
-    if (!els.ymList) return;
-    const index = buildYmIndex(posts);
-    if (!index.years.length) {
-      els.ymList.innerHTML = '';
-      if (els.ymEmptyHint) els.ymEmptyHint.classList.remove('hidden');
-      return;
-    }
-    if (els.ymEmptyHint) els.ymEmptyHint.classList.add('hidden');
+    /* kept for callers; drum picker rebuilds on open */
+    return;
+  }
 
-    if (ymExpandedYear == null || index.years.indexOf(ymExpandedYear) === -1) {
-      ymExpandedYear = index.years[0];
-    }
+  function buildYmYearList(posts) {
+    var index = buildYmIndex(posts);
+    if (!index.years.length) return [];
+    var maxY = index.years[0];
+    var minY = index.years[index.years.length - 1];
+    // pad one year above/below for wheel feel (desc: high → low)
+    var years = [];
+    for (var y = maxY + 1; y >= minY - 1; y--) years.push(y);
+    return years;
+  }
 
-    els.ymList.innerHTML = index.years
-      .map(function (y) {
-        const open = y === ymExpandedYear;
-        const months = index.monthsByYear[y] || [];
-        const monthsHtml = open
-          ? '<div class="ym-months">' +
-            months
-              .map(function (m) {
-                const mm = m < 10 ? '0' + m : String(m);
-                const key = y + '-' + mm;
-                return (
-                  '<button type="button" class="ym-month-btn" data-ym-jump="' +
-                  escapeHtml(key) +
-                  '">' +
-                  m +
-                  '月</button>'
-                );
-              })
-              .join('') +
-            '</div>'
-          : '';
-        return (
-          '<div class="ym-year-block' +
-          (open ? ' open' : '') +
-          '">' +
-          '<button type="button" class="ym-year-btn" data-ym-year="' +
-          y +
-          '" aria-expanded="' +
-          (open ? 'true' : 'false') +
-          '">' +
-          '<span class="ym-year-label">' +
-          y +
-          '年</span>' +
-          '<span class="ym-year-meta">' +
-          months.length +
-          '个月</span>' +
-          '<span class="ym-year-chevron" aria-hidden="true">' +
-          (open ? '▾' : '▸') +
-          '</span></button>' +
-          monthsHtml +
-          '</div>'
-        );
-      })
-      .join('');
+  function fillYmCol(col, values, formatter) {
+    if (!col) return;
+    var html = '<div class="ym-picker-spacer" aria-hidden="true"></div>';
+    values.forEach(function (v, i) {
+      html +=
+        '<div class="ym-picker-item" role="option" data-value="' +
+        escapeHtml(String(v)) +
+        '" data-index="' +
+        i +
+        '">' +
+        escapeHtml(formatter(v)) +
+        '</div>';
+    });
+    html += '<div class="ym-picker-spacer" aria-hidden="true"></div>';
+    col.innerHTML = html;
+  }
+
+  function ymColIndexFromScroll(col) {
+    if (!col) return 0;
+    var idx = Math.round(col.scrollTop / YM_ITEM_H);
+    var max = Math.max(0, col.querySelectorAll('.ym-picker-item').length - 1);
+    if (idx < 0) idx = 0;
+    if (idx > max) idx = max;
+    return idx;
+  }
+
+  function syncYmColActive(col) {
+    if (!col) return;
+    var idx = ymColIndexFromScroll(col);
+    var items = col.querySelectorAll('.ym-picker-item');
+    items.forEach(function (el, i) {
+      if (i === idx) el.classList.add('is-active');
+      else el.classList.remove('is-active');
+    });
+    return idx;
+  }
+
+  function scrollYmColToIndex(col, index, smooth) {
+    if (!col) return;
+    var max = Math.max(0, col.querySelectorAll('.ym-picker-item').length - 1);
+    if (index < 0) index = 0;
+    if (index > max) index = max;
+    col.scrollTo({
+      top: index * YM_ITEM_H,
+      behavior: smooth ? 'smooth' : 'auto',
+    });
+    window.setTimeout(function () {
+      syncYmColActive(col);
+    }, smooth ? 220 : 0);
+  }
+
+  function getYmSelection() {
+    var yi = ymColIndexFromScroll(els.ymYearCol);
+    var mi = ymColIndexFromScroll(els.ymMonthCol);
+    var year = ymPickerYears[yi];
+    var month = mi + 1; // months 1..12 ascending in list
+    if (!year) year = new Date().getFullYear();
+    return { year: year, month: month, key: year + '-' + pad2(month) };
+  }
+
+  function bindYmColScroll(col, which) {
+    if (!col || col.getAttribute('data-bound')) return;
+    col.setAttribute('data-bound', '1');
+    col.addEventListener(
+      'scroll',
+      function () {
+        syncYmColActive(col);
+        if (ymScrollTimers[which]) clearTimeout(ymScrollTimers[which]);
+        ymScrollTimers[which] = setTimeout(function () {
+          var idx = ymColIndexFromScroll(col);
+          scrollYmColToIndex(col, idx, true);
+        }, 80);
+      },
+      { passive: true }
+    );
   }
 
   function openYmPanel() {
     if (!els.ymMask) return;
-    renderYmPanel();
+    var posts = sortNewest(posts);
+    ymPickerYears = buildYmYearList(posts);
+    if (!ymPickerYears.length) {
+      if (els.ymYearCol) els.ymYearCol.innerHTML = '';
+      if (els.ymMonthCol) els.ymMonthCol.innerHTML = '';
+      if (els.ymEmptyHint) els.ymEmptyHint.classList.remove('hidden');
+      if (els.btnYmConfirm) els.btnYmConfirm.disabled = true;
+    } else {
+      if (els.ymEmptyHint) els.ymEmptyHint.classList.add('hidden');
+      if (els.btnYmConfirm) els.btnYmConfirm.disabled = false;
+      fillYmCol(els.ymYearCol, ymPickerYears, function (y) {
+        return String(y);
+      });
+      var months = [];
+      for (var m = 1; m <= 12; m++) months.push(m);
+      fillYmCol(els.ymMonthCol, months, function (mo) {
+        return pad2(mo);
+      });
+      bindYmColScroll(els.ymYearCol, 'year');
+      bindYmColScroll(els.ymMonthCol, 'month');
+
+      // default: latest post's year/month
+      var defY = ymPickerYears[1] != null ? ymPickerYears[1] : ymPickerYears[0]; // skip pad year
+      var defM = 1;
+      if (posts.length) {
+        var ym = ymFromTs(posts[0].createdAt);
+        defY = ym.year;
+        defM = ym.month;
+      }
+      var yIdx = ymPickerYears.indexOf(defY);
+      if (yIdx < 0) yIdx = 0;
+      els.ymMask.classList.remove('hidden');
+      // wait layout then scroll
+      window.requestAnimationFrame(function () {
+        scrollYmColToIndex(els.ymYearCol, yIdx, false);
+        scrollYmColToIndex(els.ymMonthCol, defM - 1, false);
+      });
+      return;
+    }
     els.ymMask.classList.remove('hidden');
   }
 
@@ -680,7 +761,12 @@
     els.ymMask.classList.add('hidden');
   }
 
-  function jumpToYm(key) {
+  function confirmYmPanel() {
+    var sel = getYmSelection();
+    jumpToYm(sel.key);
+  }
+
+    function jumpToYm(key) {
     closeYmPanel();
     const anchor =
       document.querySelector('.post[data-ym="' + key + '"]');
@@ -756,21 +842,10 @@
       if (e.target === els.ymMask) closeYmPanel();
     });
   }
-  if (els.ymList) {
-    els.ymList.addEventListener('click', function (e) {
-      const yearBtn = e.target.closest('[data-ym-year]');
-      if (yearBtn) {
-        const y = parseInt(yearBtn.getAttribute('data-ym-year'), 10);
-        ymExpandedYear = ymExpandedYear === y ? null : y;
-        renderYmPanel();
-        return;
-      }
-      const monthBtn = e.target.closest('[data-ym-jump]');
-      if (monthBtn) {
-        jumpToYm(monthBtn.getAttribute('data-ym-jump'));
-      }
-    });
+  if (els.btnYmConfirm) {
+    els.btnYmConfirm.addEventListener('click', confirmYmPanel);
   }
+
 
   /* lightbox events */
   if (els.lightbox) {
