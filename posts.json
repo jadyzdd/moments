@@ -1,5 +1,21 @@
 [
   {
+    "id": "post-mu58q506-9snwq",
+    "author": {
+      "name": "小明",
+      "initial": "小"
+    },
+    "text": "alkjfkadf",
+    "images": [
+      "assets/uploads/20260917-edva2d.jpg"
+    ],
+    "location": "普吉",
+    "likes": [],
+    "likedByMe": false,
+    "comments": [],
+    "createdAt": 1789632000000
+  },
+  {
     "id": "album-b6-06",
     "author": {
       "name": "小明",
