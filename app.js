@@ -631,6 +631,7 @@
   /* —— Year/Month locator —— */
   var ymPickerYears = [];
   var ymScrollTimers = { year: null, month: null };
+  var ymAnimFrames = { year: 0, month: 0 };
   var YM_ITEM_H = 40;
 
   function pad2(n) {
@@ -691,18 +692,63 @@
     return idx;
   }
 
-  function scrollYmColToIndex(col, index, smooth) {
+  function cancelYmAnim(which) {
+    if (ymAnimFrames[which]) {
+      cancelAnimationFrame(ymAnimFrames[which]);
+      ymAnimFrames[which] = 0;
+    }
+  }
+
+  /** easeOutQuint — soft stop like WeChat drum */
+  function easeOutQuint(t) {
+    return 1 - Math.pow(1 - t, 5);
+  }
+
+  function animateYmScroll(col, which, targetTop, duration) {
+    if (!col) return;
+    cancelYmAnim(which);
+    var start = col.scrollTop;
+    var dist = targetTop - start;
+    if (Math.abs(dist) < 0.5) {
+      col.scrollTop = targetTop;
+      syncYmColActive(col);
+      return;
+    }
+    var dur = duration;
+    if (dur == null) {
+      dur = Math.min(420, Math.max(220, 160 + Math.abs(dist) * 1.1));
+    }
+    var t0 = performance.now();
+    function frame(now) {
+      var t = Math.min(1, (now - t0) / dur);
+      var e = easeOutQuint(t);
+      col.scrollTop = start + dist * e;
+      syncYmColActive(col);
+      if (t < 1) {
+        ymAnimFrames[which] = requestAnimationFrame(frame);
+      } else {
+        ymAnimFrames[which] = 0;
+        col.scrollTop = targetTop;
+        syncYmColActive(col);
+      }
+    }
+    ymAnimFrames[which] = requestAnimationFrame(frame);
+  }
+
+  function scrollYmColToIndex(col, index, smooth, which) {
     if (!col) return;
     var max = Math.max(0, col.querySelectorAll('.ym-picker-item').length - 1);
     if (index < 0) index = 0;
     if (index > max) index = max;
-    col.scrollTo({
-      top: index * YM_ITEM_H,
-      behavior: smooth ? 'smooth' : 'auto',
-    });
-    window.setTimeout(function () {
+    var top = index * YM_ITEM_H;
+    var key = which || col.getAttribute('data-ym-col') || 'year';
+    if (smooth) {
+      animateYmScroll(col, key, top);
+    } else {
+      cancelYmAnim(key);
+      col.scrollTop = top;
       syncYmColActive(col);
-    }, smooth ? 220 : 0);
+    }
   }
 
   function getYmSelection() {
@@ -729,39 +775,91 @@
   function bindYmColScroll(col, which) {
     if (!col || col.getAttribute('data-bound')) return;
     col.setAttribute('data-bound', '1');
+    col.setAttribute('data-ym-col', which);
+
+    var drag = {
+      active: false,
+      moved: false,
+      startY: 0,
+      startTop: 0,
+      lastY: 0,
+      lastT: 0,
+      velocity: 0, // px per ms (content direction: finger up → positive scrollTop)
+    };
+
+    function stopInertia() {
+      if (ymScrollTimers[which]) {
+        clearTimeout(ymScrollTimers[which]);
+        ymScrollTimers[which] = null;
+      }
+      cancelYmAnim(which);
+    }
+
+    function snapWithMomentum() {
+      var maxIdx = Math.max(0, col.querySelectorAll('.ym-picker-item').length - 1);
+      var maxTop = maxIdx * YM_ITEM_H;
+      // project a short coast from velocity
+      var projected = col.scrollTop + drag.velocity * 180;
+      if (projected < 0) projected = 0;
+      if (projected > maxTop) projected = maxTop;
+      var idx = Math.round(projected / YM_ITEM_H);
+      if (idx < 0) idx = 0;
+      if (idx > maxIdx) idx = maxIdx;
+      var target = idx * YM_ITEM_H;
+      var dist = Math.abs(target - col.scrollTop);
+      var dur = Math.min(480, Math.max(260, 200 + dist * 1.25 + Math.abs(drag.velocity) * 40));
+      animateYmScroll(col, which, target, dur);
+    }
+
     col.addEventListener(
       'scroll',
       function () {
+        if (drag.active || ymAnimFrames[which]) {
+          syncYmColActive(col);
+          return;
+        }
         syncYmColActive(col);
         if (ymScrollTimers[which]) clearTimeout(ymScrollTimers[which]);
+        // wheel / trackpad: wait until idle, then ease to nearest
         ymScrollTimers[which] = setTimeout(function () {
           var idx = ymColIndexFromScroll(col);
-          // snap without smooth to avoid fighting finger/wheel scroll
-          scrollYmColToIndex(col, idx, false);
-        }, 120);
+          scrollYmColToIndex(col, idx, true, which);
+        }, 90);
       },
       { passive: true }
     );
 
-    // Touch/mouse drag fallback (helps when nested overflow is flaky)
-    var drag = { active: false, startY: 0, startTop: 0 };
     function onStart(clientY) {
+      stopInertia();
       drag.active = true;
+      drag.moved = false;
       drag.startY = clientY;
       drag.startTop = col.scrollTop;
-      if (ymScrollTimers[which]) clearTimeout(ymScrollTimers[which]);
+      drag.lastY = clientY;
+      drag.lastT = performance.now();
+      drag.velocity = 0;
     }
+
     function onMove(clientY) {
       if (!drag.active) return;
+      var now = performance.now();
+      var dy = clientY - drag.lastY;
+      var dt = Math.max(1, now - drag.lastT);
+      // finger down → content goes up → scrollTop decreases
+      drag.velocity = ((drag.lastY - clientY) / dt) * 0.7 + drag.velocity * 0.3;
+      drag.lastY = clientY;
+      drag.lastT = now;
+      if (Math.abs(clientY - drag.startY) > 2) drag.moved = true;
       col.scrollTop = drag.startTop + (drag.startY - clientY);
       syncYmColActive(col);
     }
+
     function onEnd() {
       if (!drag.active) return;
       drag.active = false;
-      var idx = ymColIndexFromScroll(col);
-      scrollYmColToIndex(col, idx, true);
+      snapWithMomentum();
     }
+
     col.addEventListener(
       'touchstart',
       function (e) {
@@ -775,12 +873,16 @@
       function (e) {
         if (!drag.active || !e.touches || !e.touches[0]) return;
         onMove(e.touches[0].clientY);
+        // prevent page scroll while spinning the drum
+        if (drag.moved && e.cancelable) e.preventDefault();
       },
-      { passive: true }
+      { passive: false }
     );
     col.addEventListener('touchend', onEnd);
     col.addEventListener('touchcancel', onEnd);
+
     col.addEventListener('mousedown', function (e) {
+      if (e.button !== 0) return;
       onStart(e.clientY);
       e.preventDefault();
     });

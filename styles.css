@@ -581,14 +581,16 @@ body {
   min-height: 0; /* allow flex child to scroll instead of growing with content */
   height: 100%;
   max-height: 100%;
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
-  scroll-snap-type: y mandatory;
+  /* snap handled in JS with eased animation for silkier feel */
+  scroll-snap-type: none;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
+  touch-action: none; /* we drive drag; avoids fighting native inertia */
   scrollbar-width: none;
   overscroll-behavior: contain;
   text-align: center;
+  will-change: scroll-position;
 }
 
 .ym-picker-col::-webkit-scrollbar {
@@ -600,13 +602,13 @@ body {
 .ym-picker-item {
   height: 40px;
   line-height: 40px;
-  scroll-snap-align: center;
   font-size: 15px;
   font-weight: 500;
   color: #c8c8c8;
-  transition: color 0.15s, font-size 0.15s;
+  transition: color 0.12s ease, font-size 0.12s ease, transform 0.12s ease;
   user-select: none;
   -webkit-user-select: none;
+  pointer-events: none;
 }
 
 .ym-picker-item.is-active {
