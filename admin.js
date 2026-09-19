@@ -1004,9 +1004,9 @@
     }
     if (status === 409 || status === 422) {
       return (
-        '提交冲突或校验失败（' +
+        '提交冲突（' +
         status +
-        '）：可能文件已被他人更新，请刷新后重试。' +
+        '）：仓库里的文件刚被更新过（常见于刚传完多张图）。请再点一次「同步」；若仍失败，稍等几秒后重试。' +
         (detail ? ' ' + detail : '')
       );
     }
@@ -1102,9 +1102,21 @@
   }
 
   function ghGetFileSha(apiUrl, branch, headers) {
-    return fetch(apiUrl + '?ref=' + encodeURIComponent(branch), {
+    var url =
+      apiUrl +
+      '?ref=' +
+      encodeURIComponent(branch) +
+      '&t=' +
+      Date.now();
+    var hdrs = {};
+    Object.keys(headers || {}).forEach(function (k) {
+      hdrs[k] = headers[k];
+    });
+    hdrs['Cache-Control'] = 'no-cache';
+    return fetch(url, {
       method: 'GET',
-      headers: headers,
+      headers: hdrs,
+      cache: 'no-store',
     }).then(function (res) {
       if (res.status === 404) return null;
       if (!res.ok) {
@@ -1129,6 +1141,7 @@
       method: 'PUT',
       headers: headers,
       body: JSON.stringify(body),
+      cache: 'no-store',
     }).then(function (res) {
       return res.text().then(function (t) {
         var parsed = null;
@@ -1141,6 +1154,48 @@
         return parsed;
       });
     });
+  }
+
+  function delay(ms) {
+    return new Promise(function (resolve) {
+      window.setTimeout(resolve, ms);
+    });
+  }
+
+  /**
+   * Put file with fresh SHA; on 409/422 re-fetch SHA and retry
+   * (common after rapid image uploads advance the branch).
+   */
+  function ghPutContentWithRetry(
+    apiUrl,
+    branch,
+    headers,
+    message,
+    contentB64,
+    onRetry
+  ) {
+    var maxAttempts = 4;
+    function attempt(n) {
+      return ghGetFileSha(apiUrl, branch, headers).then(function (sha) {
+        return ghPutContent(
+          apiUrl,
+          branch,
+          headers,
+          message,
+          contentB64,
+          sha
+        ).catch(function (err) {
+          var status = err && err.status;
+          var retriable = status === 409 || status === 422;
+          if (!retriable || n >= maxAttempts) throw err;
+          if (typeof onRetry === 'function') onRetry(n, status);
+          return delay(350 * n).then(function () {
+            return attempt(n + 1);
+          });
+        });
+      });
+    }
+    return attempt(1);
   }
 
   /**
@@ -1191,17 +1246,14 @@
       i += 1;
       if (onProgress) onProgress(i, uploads.length, item);
       var apiUrl = ghContentsApi(owner, repo, item.path);
-      return ghGetFileSha(apiUrl, branch, headers).then(function (sha) {
-        return ghPutContent(
-          apiUrl,
-          branch,
-          headers,
-          'Add photo ' + item.path + ' from Moments admin',
-          item.content,
-          sha
-        ).then(function (result) {
-          return next(result);
-        });
+      return ghPutContentWithRetry(
+        apiUrl,
+        branch,
+        headers,
+        'Add photo ' + item.path + ' from Moments admin',
+        item.content
+      ).then(function (result) {
+        return next(result);
       });
     }
     return next(null);
@@ -1324,30 +1376,47 @@
             'pending'
           );
           var apiBase = ghContentsApi(owner, repo, 'posts.json');
-          return ghGetFileSha(apiBase, branch, headers).then(function (sha) {
-            return ghPutContent(
+          // Brief pause so Contents API sees the latest commit after image uploads
+          return delay(uploadCount ? 500 : 0).then(function () {
+            return ghPutContentWithRetry(
               apiBase,
               branch,
               headers,
               'Sync posts.json from Moments admin',
               utf8ToBase64(text),
-              sha
+              function (n, status) {
+                setSyncStatus(
+                  'posts.json 版本冲突（' +
+                    status +
+                    '），正在重试 ' +
+                    n +
+                    '/3…',
+                  'pending'
+                );
+              }
             );
           });
         })
         .then(function () {
           setSyncStatus('正在更新 profile.json…', 'pending');
           var apiProfile = ghContentsApi(owner, repo, 'profile.json');
-          return ghGetFileSha(apiProfile, branch, headers).then(function (sha) {
-            return ghPutContent(
-              apiProfile,
-              branch,
-              headers,
-              'Sync profile.json from Moments admin',
-              utf8ToBase64(profileText),
-              sha
-            );
-          });
+          return ghPutContentWithRetry(
+            apiProfile,
+            branch,
+            headers,
+            'Sync profile.json from Moments admin',
+            utf8ToBase64(profileText),
+            function (n, status) {
+              setSyncStatus(
+                'profile.json 版本冲突（' +
+                  status +
+                  '），正在重试 ' +
+                  n +
+                  '/3…',
+                'pending'
+              );
+            }
+          );
         })
         .then(function () {
           App.setPosts(JSON.parse(text));
