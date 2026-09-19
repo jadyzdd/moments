@@ -896,22 +896,6 @@
     "createdAt": 1427544900000
   },
   {
-    "id": "pdf2015-p02",
-    "author": {
-      "name": "小明",
-      "initial": "明"
-    },
-    "text": "西湖旋转餐厅\n我的家人对你的称赞不绝于耳\n两个人的感情莫过于亲人的祝福",
-    "images": [
-      "assets/uploads/pdf2015-p02.jpg"
-    ],
-    "location": "杭州 · 西湖旋转餐厅",
-    "likes": [],
-    "likedByMe": false,
-    "comments": [],
-    "createdAt": 1426419000000
-  },
-  {
     "id": "pdf2015-p01",
     "author": {
       "name": "小明",
