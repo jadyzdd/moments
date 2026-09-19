@@ -1,27 +1,11 @@
 [
   {
-    "id": "post-mu58q506-9snwq",
-    "author": {
-      "name": "小明",
-      "initial": "小"
-    },
-    "text": "alkjfkadf",
-    "images": [
-      "assets/uploads/20260917-edva2d.jpg"
-    ],
-    "location": "普吉",
-    "likes": [],
-    "likedByMe": false,
-    "comments": [],
-    "createdAt": 1789632000000
-  },
-  {
     "id": "album-b6-06",
     "author": {
       "name": "小明",
       "initial": "明"
     },
-    "text": "杭州 · 家人 · 旋转餐厅\n是你的安排\n让他们在杭州毕生难忘\n渴望拉近\n你我的距离\n就在这\n一页之间\n关于我\n最美的印象\n只留给你",
+    "text": "杭州 · 家人 · 旋转餐厅\n是你的安排\n让他们在杭州有了毕生难忘的经历",
     "images": [
       "assets/uploads/20150228-b606.jpg"
     ],
