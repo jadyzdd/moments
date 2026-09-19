@@ -1101,6 +1101,17 @@
     );
   }
 
+  function ghReadHeaders(headers) {
+    // GET must not add extra headers (e.g. Cache-Control) or CORS preflight can fail
+    // with a opaque "Failed to fetch". Keep only what GitHub allows for browser calls.
+    return {
+      Authorization: headers.Authorization,
+      Accept: headers.Accept || 'application/vnd.github+json',
+      'X-GitHub-Api-Version':
+        headers['X-GitHub-Api-Version'] || '2022-11-28',
+    };
+  }
+
   function ghGetFileSha(apiUrl, branch, headers) {
     var url =
       apiUrl +
@@ -1108,15 +1119,9 @@
       encodeURIComponent(branch) +
       '&t=' +
       Date.now();
-    var hdrs = {};
-    Object.keys(headers || {}).forEach(function (k) {
-      hdrs[k] = headers[k];
-    });
-    hdrs['Cache-Control'] = 'no-cache';
     return fetch(url, {
       method: 'GET',
-      headers: hdrs,
-      cache: 'no-store',
+      headers: ghReadHeaders(headers),
     }).then(function (res) {
       if (res.status === 404) return null;
       if (!res.ok) {
@@ -1141,7 +1146,6 @@
       method: 'PUT',
       headers: headers,
       body: JSON.stringify(body),
-      cache: 'no-store',
     }).then(function (res) {
       return res.text().then(function (t) {
         var parsed = null;
@@ -1186,10 +1190,18 @@
           sha
         ).catch(function (err) {
           var status = err && err.status;
-          var retriable = status === 409 || status === 422;
+          var netFail =
+            !status &&
+            err &&
+            /failed to fetch|networkerror|load failed/i.test(
+              String(err.message || err)
+            );
+          var retriable = status === 409 || status === 422 || netFail;
           if (!retriable || n >= maxAttempts) throw err;
-          if (typeof onRetry === 'function') onRetry(n, status);
-          return delay(350 * n).then(function () {
+          if (typeof onRetry === 'function') {
+            onRetry(n, status || 'network');
+          }
+          return delay(500 * n).then(function () {
             return attempt(n + 1);
           });
         });
@@ -1438,11 +1450,13 @@
           if (err && err.status) {
             setSyncStatus(mapGhError(err.status, err.body || err.json), 'error');
           } else {
-            setSyncStatus(
-              '网络或浏览器错误：' +
-                (err && err.message ? err.message : String(err)),
-              'error'
-            );
+            var msg = err && err.message ? err.message : String(err);
+            var hint = '';
+            if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+              hint =
+                '。常见原因：网络中断、图片过大导致请求被中断，或浏览器扩展拦截了 api.github.com。请检查网络后重试；若刚传过多张大图，可先少传几张再同步。';
+            }
+            setSyncStatus('网络或浏览器错误：' + msg + hint, 'error');
           }
         })
         .then(function () {
