@@ -312,7 +312,7 @@
         var d = App.formatDateYMD(p.createdAt);
         var loc = (p.location || '').trim() || '未标注地点';
         var thumbs = (p.images || [])
-          .slice(0, 4)
+          .slice(0, 9)
           .map(function (src) {
             return (
               '<img class="admin-thumb" src="' +
@@ -322,9 +322,9 @@
           })
           .join('');
         var more =
-          (p.images || []).length > 4
+          (p.images || []).length > 9
             ? '<span class="admin-thumb-more">+' +
-              ((p.images || []).length - 4) +
+              ((p.images || []).length - 9) +
               '</span>'
             : '';
         var ymKey =
