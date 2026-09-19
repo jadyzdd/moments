@@ -61,6 +61,7 @@
 
   let posts = [];
   let selectedPhotos = new Set();
+  var MAX_POST_IMAGES = 9;
 
   /* lightbox state */
   let lbImages = [];
@@ -426,14 +427,14 @@
   function renderPost(post, ymKey) {
     const ymAttr = ymKey || ymFromTs(post.createdAt).key;
     const n = (post.images && post.images.length) || 0;
-    const gridClass = n === 0 ? '' : 'n' + Math.min(n, 9);
+    const gridClass = n === 0 ? '' : 'n' + Math.min(n, MAX_POST_IMAGES);
     const imagesHtml =
       n > 0
         ? '<div class="img-grid ' +
           gridClass +
           '">' +
           post.images
-            .slice(0, 9)
+            .slice(0, MAX_POST_IMAGES)
             .map(function (src, idx) {
               return (
                 '<div class="img-cell">' +
@@ -475,7 +476,7 @@
   function openLightbox(postId, index) {
     const post = findPost(postId);
     if (!post || !post.images || !post.images.length) return;
-    lbImages = post.images.slice(0, 9);
+    lbImages = post.images.slice(0, MAX_POST_IMAGES);
     lbIndex = Math.max(0, Math.min(index | 0, lbImages.length - 1));
     lbCaptionText = (post.text && String(post.text).trim()) || '';
     lbCaptionLoc = (post.location && String(post.location).trim()) || '';

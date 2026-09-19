@@ -330,14 +330,26 @@ body {
   max-width: 300px;
 }
 
-.img-grid.n4,
+/* 4 张：微信式 2×2 */
+.img-grid.n4 {
+  grid-template-columns: 1fr 1fr;
+  max-width: 280px;
+}
+
+/* 5～9 张：三列九宫格，确保 7～9 张第三行完整露出 */
 .img-grid.n5,
 .img-grid.n6,
 .img-grid.n7,
 .img-grid.n8,
 .img-grid.n9 {
   grid-template-columns: 1fr 1fr 1fr;
-  max-width: 300px;
+  max-width: 312px;
+}
+
+.img-grid.n7,
+.img-grid.n8,
+.img-grid.n9 {
+  grid-auto-rows: 1fr;
 }
 
 .img-cell {
