@@ -1836,3 +1836,27 @@ body.admin-open .scroll-fabs,
 body.admin-open .fab {
   display: none !important;
 }
+
+
+/* Year/month picker must sit above admin panel (z-index 120) */
+#ymMask {
+  z-index: 140;
+}
+
+body.admin-open .ym-entry {
+  display: none !important;
+}
+
+.admin-header-btn#adminYm {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  min-width: 44px;
+  padding: 0 8px;
+}
+
+.admin-item-flash {
+  outline: 2px solid var(--wx-green);
+  outline-offset: 2px;
+  transition: outline-color 0.3s ease;
+}

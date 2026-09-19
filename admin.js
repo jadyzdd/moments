@@ -265,6 +265,11 @@
       newBtn.classList.toggle('hidden', !isPosts);
       newBtn.disabled = !isPosts;
     }
+    var ymBtn = $('adminYm');
+    if (ymBtn) {
+      ymBtn.classList.toggle('hidden', !isPosts);
+      ymBtn.disabled = !isPosts;
+    }
     var count = $('adminCount');
     if (count) {
       count.style.visibility = isPosts ? '' : 'hidden';
@@ -322,9 +327,23 @@
               ((p.images || []).length - 4) +
               '</span>'
             : '';
+        var ymKey =
+          App.ymFromTs
+            ? App.ymFromTs(p.createdAt).key
+            : (function () {
+                var dt = new Date(p.createdAt);
+                var mm = dt.getMonth() + 1;
+                return (
+                  dt.getFullYear() +
+                  '-' +
+                  (mm < 10 ? '0' + mm : String(mm))
+                );
+              })();
         return (
           '<article class="admin-item" data-id="' +
           App.escapeHtml(p.id) +
+          '" data-ym="' +
+          App.escapeHtml(ymKey) +
           '">' +
           '<div class="admin-item-main">' +
           '<div class="admin-item-meta">' +
@@ -1504,6 +1523,13 @@
     $('adminNew').addEventListener('click', function () {
       openEditor(null);
     });
+    if ($('adminYm')) {
+      $('adminYm').addEventListener('click', function () {
+        if (window.MomentsApp && typeof MomentsApp.openYmPanel === 'function') {
+          MomentsApp.openYmPanel('admin');
+        }
+      });
+    }
     $('adminExport').addEventListener('click', exportJson);
     $('adminImportReplace').addEventListener('click', function () {
       $('adminImportFile').setAttribute('data-mode', 'replace');

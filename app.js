@@ -660,6 +660,7 @@
   /* —— Year/Month locator —— */
   var ymPickerYears = [];
   var ymScrollTimers = { year: null, month: null };
+  var ymJumpTarget = 'feed'; /* 'feed' | 'admin' */
   var ymAnimFrames = { year: 0, month: 0 };
   var YM_ITEM_H = 40;
 
@@ -922,8 +923,9 @@
     window.addEventListener('mouseup', onEnd);
   }
 
-  function openYmPanel() {
+  function openYmPanel(target) {
     if (!els.ymMask) return;
+    ymJumpTarget = target === 'admin' ? 'admin' : 'feed';
     var list = sortNewest(posts);
     ymPickerYears = buildYmYearList(list);
     if (!ymPickerYears.length) {
@@ -980,9 +982,35 @@
 
   function jumpToYm(key) {
     closeYmPanel();
+    var target = ymJumpTarget || 'feed';
+    ymJumpTarget = 'feed';
+
+    if (target === 'admin') {
+      var adminList = document.getElementById('adminList');
+      var adminPanel = document.getElementById('adminPanel');
+      if (!adminList || !adminPanel || adminPanel.classList.contains('hidden')) {
+        showToast('请先打开管理页');
+        return;
+      }
+      var item =
+        adminList.querySelector('.admin-item[data-ym="' + key + '"]') ||
+        adminList.querySelector(
+          '.admin-item[data-ym^="' + String(key).slice(0, 4) + '-"]'
+        );
+      if (!item) {
+        showToast('该月暂无动态');
+        return;
+      }
+      item.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      item.classList.add('admin-item-flash');
+      window.setTimeout(function () {
+        item.classList.remove('admin-item-flash');
+      }, 1200);
+      return;
+    }
+
     var anchor = document.querySelector('.post[data-ym="' + key + '"]');
     if (!anchor) {
-      // fallback: first post in same year, else nearest by date key
       var year = String(key).slice(0, 4);
       anchor = document.querySelector('.post[data-ym^="' + year + '-"]');
     }
@@ -1299,5 +1327,7 @@
     findPost: findPost,
     fetchPublishedPosts: fetchPublishedPosts,
     fetchPublishedProfile: fetchPublishedProfile,
+    openYmPanel: openYmPanel,
+    ymFromTs: ymFromTs,
   };
 })();
