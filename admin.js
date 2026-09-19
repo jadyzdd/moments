@@ -22,9 +22,9 @@
   /** Soft limit for posts.json after images are extracted to files */
   var MAX_POSTS_JSON_BYTES = 2 * 1024 * 1024;
   /** Warn / block sync for a single uploaded image file */
-  var MAX_FILE_BYTES = 5 * 1024 * 1024;
-  var IMG_MAX_EDGE = 1600;
-  var IMG_JPEG_QUALITY = 0.82;
+  var MAX_FILE_BYTES = 3 * 1024 * 1024;
+  var IMG_MAX_EDGE = 1280;
+  var IMG_JPEG_QUALITY = 0.76;
   var UPLOADS_DIR = 'assets/uploads';
 
   var App = null;
@@ -1077,87 +1077,25 @@
   }
 
   function ghApiHeaders(token) {
+    // Only headers GitHub lists in Access-Control-Allow-Headers for browser CORS.
+    // Do NOT send Accept: application/vnd.github+json — it is not allow-listed and
+    // some browsers fail the preflight with opaque "Failed to fetch".
     return {
       Authorization: 'Bearer ' + token,
-      Accept: 'application/vnd.github+json',
       'Content-Type': 'application/json',
       'X-GitHub-Api-Version': '2022-11-28',
     };
   }
 
-  function ghContentsApi(owner, repo, relPath) {
-    var parts = String(relPath)
-      .split('/')
-      .filter(Boolean)
-      .map(encodeURIComponent)
-      .join('/');
+  function ghRepoApi(owner, repo, subPath) {
     return (
       'https://api.github.com/repos/' +
       encodeURIComponent(owner) +
       '/' +
       encodeURIComponent(repo) +
-      '/contents/' +
-      parts
+      '/' +
+      subPath
     );
-  }
-
-  function ghReadHeaders(headers) {
-    // GET must not add extra headers (e.g. Cache-Control) or CORS preflight can fail
-    // with a opaque "Failed to fetch". Keep only what GitHub allows for browser calls.
-    return {
-      Authorization: headers.Authorization,
-      Accept: headers.Accept || 'application/vnd.github+json',
-      'X-GitHub-Api-Version':
-        headers['X-GitHub-Api-Version'] || '2022-11-28',
-    };
-  }
-
-  function ghGetFileSha(apiUrl, branch, headers) {
-    var url =
-      apiUrl +
-      '?ref=' +
-      encodeURIComponent(branch) +
-      '&t=' +
-      Date.now();
-    return fetch(url, {
-      method: 'GET',
-      headers: ghReadHeaders(headers),
-    }).then(function (res) {
-      if (res.status === 404) return null;
-      if (!res.ok) {
-        return res.text().then(function (t) {
-          throw { status: res.status, body: t };
-        });
-      }
-      return res.json().then(function (j) {
-        return j.sha || null;
-      });
-    });
-  }
-
-  function ghPutContent(apiUrl, branch, headers, message, contentB64, sha) {
-    var body = {
-      message: message,
-      content: contentB64,
-      branch: branch,
-    };
-    if (sha) body.sha = sha;
-    return fetch(apiUrl, {
-      method: 'PUT',
-      headers: headers,
-      body: JSON.stringify(body),
-    }).then(function (res) {
-      return res.text().then(function (t) {
-        var parsed = null;
-        try {
-          parsed = JSON.parse(t);
-        } catch (e) {}
-        if (!res.ok) {
-          throw { status: res.status, body: t, json: parsed };
-        }
-        return parsed;
-      });
-    });
   }
 
   function delay(ms) {
@@ -1166,48 +1104,175 @@
     });
   }
 
-  /**
-   * Put file with fresh SHA; on 409/422 re-fetch SHA and retry
-   * (common after rapid image uploads advance the branch).
-   */
-  function ghPutContentWithRetry(
-    apiUrl,
-    branch,
-    headers,
-    message,
-    contentB64,
-    onRetry
-  ) {
-    var maxAttempts = 4;
-    function attempt(n) {
-      return ghGetFileSha(apiUrl, branch, headers).then(function (sha) {
-        return ghPutContent(
-          apiUrl,
-          branch,
-          headers,
-          message,
-          contentB64,
-          sha
-        ).catch(function (err) {
-          var status = err && err.status;
-          var netFail =
-            !status &&
-            err &&
-            /failed to fetch|networkerror|load failed/i.test(
-              String(err.message || err)
-            );
-          var retriable = status === 409 || status === 422 || netFail;
-          if (!retriable || n >= maxAttempts) throw err;
-          if (typeof onRetry === 'function') {
-            onRetry(n, status || 'network');
+  function isNetworkFetchError(err) {
+    if (!err) return false;
+    if (err.network) return true;
+    if (err.status) return false;
+    return /failed to fetch|networkerror|load failed|network request failed/i.test(
+      String(err.message || err)
+    );
+  }
+
+  function ghFetchJson(url, options, label) {
+    label = label || url;
+    return fetch(url, options)
+      .then(function (res) {
+        return res.text().then(function (t) {
+          var parsed = null;
+          try {
+            parsed = JSON.parse(t);
+          } catch (e) {}
+          if (!res.ok) {
+            throw {
+              status: res.status,
+              body: t,
+              json: parsed,
+              label: label,
+            };
           }
-          return delay(500 * n).then(function () {
-            return attempt(n + 1);
-          });
+          return parsed;
+        });
+      })
+      .catch(function (err) {
+        if (err && (err.status || err.network)) throw err;
+        throw {
+          network: true,
+          message: err && err.message ? err.message : String(err),
+          label: label,
+        };
+      });
+  }
+
+  function ghFetchJsonRetry(url, options, label, attempts) {
+    attempts = attempts || 3;
+    function run(n) {
+      return ghFetchJson(url, options, label).catch(function (err) {
+        if (!isNetworkFetchError(err) || n >= attempts) throw err;
+        return delay(600 * n).then(function () {
+          return run(n + 1);
         });
       });
     }
-    return attempt(1);
+    return run(1);
+  }
+
+  /**
+   * Create one git commit containing all path/content pairs (base64 file bodies).
+   * Avoids Contents API multi-commit SHA races and reduces Failed-to-fetch windows.
+   */
+  function ghCommitFiles(owner, repo, branch, headers, files, message, onProgress) {
+    var refUrl = ghRepoApi(
+      owner,
+      repo,
+      'git/ref/heads/' + encodeURIComponent(branch)
+    );
+    var readHeaders = {
+      Authorization: headers.Authorization,
+      'X-GitHub-Api-Version': headers['X-GitHub-Api-Version'],
+    };
+
+    return ghFetchJsonRetry(
+      refUrl + '?t=' + Date.now(),
+      { method: 'GET', headers: readHeaders },
+      '读取分支 ' + branch,
+      3
+    ).then(function (ref) {
+      var headSha = ref && ref.object && ref.object.sha;
+      if (!headSha) throw { message: '无法读取分支 HEAD' };
+      return ghFetchJsonRetry(
+        ghRepoApi(owner, repo, 'git/commits/' + headSha),
+        { method: 'GET', headers: readHeaders },
+        '读取最新提交',
+        3
+      ).then(function (commit) {
+        var baseTree = commit.tree && commit.tree.sha;
+        if (!baseTree) throw { message: '无法读取仓库 tree' };
+
+        var i = 0;
+        var treeItems = [];
+
+        function nextBlob() {
+          if (i >= files.length) {
+            return Promise.resolve();
+          }
+          var file = files[i];
+          i += 1;
+          if (onProgress) onProgress(i, files.length, file);
+          return ghFetchJsonRetry(
+            ghRepoApi(owner, repo, 'git/blobs'),
+            {
+              method: 'POST',
+              headers: headers,
+              body: JSON.stringify({
+                content: file.content,
+                encoding: 'base64',
+              }),
+            },
+            '上传 ' + file.path,
+            4
+          )
+            .then(function (blob) {
+              treeItems.push({
+                path: file.path,
+                mode: '100644',
+                type: 'blob',
+                sha: blob.sha,
+              });
+              // pace requests — rapid large POSTs often surface as Failed to fetch
+              return delay(220);
+            })
+            .then(nextBlob);
+        }
+
+        return nextBlob().then(function () {
+          if (onProgress) {
+            onProgress(files.length, files.length, { path: '(创建提交)' });
+          }
+          return ghFetchJsonRetry(
+            ghRepoApi(owner, repo, 'git/trees'),
+            {
+              method: 'POST',
+              headers: headers,
+              body: JSON.stringify({
+                base_tree: baseTree,
+                tree: treeItems,
+              }),
+            },
+            '创建文件树',
+            3
+          ).then(function (tree) {
+            return ghFetchJsonRetry(
+              ghRepoApi(owner, repo, 'git/commits'),
+              {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                  message: message,
+                  tree: tree.sha,
+                  parents: [headSha],
+                }),
+              },
+              '创建提交',
+              3
+            );
+          }).then(function (newCommit) {
+            return ghFetchJsonRetry(
+              refUrl,
+              {
+                method: 'PATCH',
+                headers: headers,
+                body: JSON.stringify({
+                  sha: newCommit.sha,
+                  force: false,
+                }),
+              },
+              '更新分支引用',
+              3
+            );
+          });
+        });
+      });
+    });
   }
 
   /**
@@ -1250,27 +1315,6 @@
     return { posts: cloned, uploads: uploads, oversized: oversized };
   }
 
-  function uploadFilesSequentially(uploads, owner, repo, branch, headers, onProgress) {
-    var i = 0;
-    function next(lastResult) {
-      if (i >= uploads.length) return Promise.resolve(lastResult);
-      var item = uploads[i];
-      i += 1;
-      if (onProgress) onProgress(i, uploads.length, item);
-      var apiUrl = ghContentsApi(owner, repo, item.path);
-      return ghPutContentWithRetry(
-        apiUrl,
-        branch,
-        headers,
-        'Add photo ' + item.path + ' from Moments admin',
-        item.content
-      ).then(function (result) {
-        return next(result);
-      });
-    }
-    return next(null);
-  }
-
   function syncToGitHub() {
     if (syncing) return;
     setSyncStatus('准备同步…', 'pending');
@@ -1288,7 +1332,6 @@
     syncing = true;
     updateSyncButtonState();
 
-    // Defer so the UI can paint "准备同步…" before heavy clone/base64 work
     window.setTimeout(function () {
       var prepared;
       var preparedProfile;
@@ -1296,10 +1339,9 @@
       var profileText;
       var bytes;
       var uploadCount;
-      var allUploads;
+      var files;
       try {
         setSyncStatus('正在处理本地数据…', 'pending');
-        // Include unsaved draft fields if admin is editing profile
         if (draftProfile) {
           readProfileFieldDraft();
           App.setProfile(draftProfile);
@@ -1337,19 +1379,30 @@
           updateSyncButtonState();
           return;
         }
-        allUploads = prepared.uploads.concat(preparedProfile.uploads);
-        uploadCount = allUploads.length;
-        if (uploadCount) {
-          setSyncStatus(
-            '正在上传 ' + uploadCount + ' 张图片…',
-            'pending'
-          );
-        } else {
-          setSyncStatus(
-            '正在同步 posts.json / profile.json…（' + formatBytes(bytes) + '）',
-            'pending'
-          );
-        }
+
+        files = [];
+        prepared.uploads.concat(preparedProfile.uploads).forEach(function (u) {
+          files.push({ path: u.path, content: u.content, size: u.size });
+        });
+        files.push({
+          path: 'posts.json',
+          content: utf8ToBase64(text),
+          size: bytes,
+        });
+        files.push({
+          path: 'profile.json',
+          content: utf8ToBase64(profileText),
+          size: utf8ByteLength(profileText),
+        });
+        uploadCount = prepared.uploads.length + preparedProfile.uploads.length;
+        setSyncStatus(
+          '开始同步（' +
+            files.length +
+            ' 个文件' +
+            (uploadCount ? '，含 ' + uploadCount + ' 张图' : '') +
+            '）…',
+          'pending'
+        );
       } catch (err) {
         setSyncStatus(
           '准备同步失败：' + (err && err.message ? err.message : String(err)),
@@ -1361,75 +1414,27 @@
       }
 
       var headers = ghApiHeaders(token);
-      uploadFilesSequentially(
-        allUploads,
+      ghCommitFiles(
         owner,
         repo,
         branch,
         headers,
-        function (done, total, item) {
+        files,
+        'Sync Moments from admin (' +
+          uploadCount +
+          ' images, posts.json, profile.json)',
+        function (done, total, file) {
           setSyncStatus(
-            '正在上传图片 ' +
+            '同步中 ' +
               done +
               '/' +
               total +
-              '：' +
-              item.path +
-              '（' +
-              formatBytes(item.size) +
-              '）',
+              (file && file.path ? '：' + file.path : '') +
+              (file && file.size ? '（' + formatBytes(file.size) + '）' : ''),
             'pending'
           );
         }
       )
-        .then(function () {
-          setSyncStatus(
-            '图片已上传，正在更新 posts.json…（' + formatBytes(bytes) + '）',
-            'pending'
-          );
-          var apiBase = ghContentsApi(owner, repo, 'posts.json');
-          // Brief pause so Contents API sees the latest commit after image uploads
-          return delay(uploadCount ? 500 : 0).then(function () {
-            return ghPutContentWithRetry(
-              apiBase,
-              branch,
-              headers,
-              'Sync posts.json from Moments admin',
-              utf8ToBase64(text),
-              function (n, status) {
-                setSyncStatus(
-                  'posts.json 版本冲突（' +
-                    status +
-                    '），正在重试 ' +
-                    n +
-                    '/3…',
-                  'pending'
-                );
-              }
-            );
-          });
-        })
-        .then(function () {
-          setSyncStatus('正在更新 profile.json…', 'pending');
-          var apiProfile = ghContentsApi(owner, repo, 'profile.json');
-          return ghPutContentWithRetry(
-            apiProfile,
-            branch,
-            headers,
-            'Sync profile.json from Moments admin',
-            utf8ToBase64(profileText),
-            function (n, status) {
-              setSyncStatus(
-                'profile.json 版本冲突（' +
-                  status +
-                  '），正在重试 ' +
-                  n +
-                  '/3…',
-                'pending'
-              );
-            }
-          );
-        })
         .then(function () {
           App.setPosts(JSON.parse(text));
           App.setProfile(JSON.parse(profileText));
@@ -1448,15 +1453,23 @@
         })
         .catch(function (err) {
           if (err && err.status) {
-            setSyncStatus(mapGhError(err.status, err.body || err.json), 'error');
+            setSyncStatus(
+              mapGhError(err.status, err.body || err.json) +
+                (err.label ? '（步骤：' + err.label + '）' : ''),
+              'error'
+            );
+          } else if (isNetworkFetchError(err)) {
+            setSyncStatus(
+              '网络中断（Failed to fetch）' +
+                (err.label ? '，发生在：' + err.label : '') +
+                '。请检查网络后重试；若图片较多，可先只改一张再同步。也可暂时关闭广告拦截扩展后再试。',
+              'error'
+            );
           } else {
-            var msg = err && err.message ? err.message : String(err);
-            var hint = '';
-            if (/failed to fetch|networkerror|load failed/i.test(msg)) {
-              hint =
-                '。常见原因：网络中断、图片过大导致请求被中断，或浏览器扩展拦截了 api.github.com。请检查网络后重试；若刚传过多张大图，可先少传几张再同步。';
-            }
-            setSyncStatus('网络或浏览器错误：' + msg + hint, 'error');
+            setSyncStatus(
+              '同步失败：' + (err && err.message ? err.message : String(err)),
+              'error'
+            );
           }
         })
         .then(function () {
