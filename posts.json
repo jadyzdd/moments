@@ -793,6 +793,22 @@
     "createdAt": 1439718300000
   },
   {
+    "id": "post-mu9f041v-b9wpi",
+    "author": {
+      "name": "小明",
+      "initial": "小"
+    },
+    "text": "离职的日子\n你靠着摄影赚钱\n酷暑的杭州早上5点多就得起床\n周末我充当司机一起走过了杭州更多的角落",
+    "images": [
+      "assets/uploads/20260920-bkic18.jpg"
+    ],
+    "location": "杭州",
+    "likes": [],
+    "likedByMe": false,
+    "comments": [],
+    "createdAt": 1438495560000
+  },
+  {
     "id": "pdf2015-p10",
     "author": {
       "name": "小明",
