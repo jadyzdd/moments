@@ -755,22 +755,6 @@
     "createdAt": 1442662200000
   },
   {
-    "id": "pdf2015-p12",
-    "author": {
-      "name": "小明",
-      "initial": "明"
-    },
-    "text": "还记得我的生日愿望么\n说出来好像还真的不灵了",
-    "images": [
-      "assets/uploads/pdf2015-p12.jpg"
-    ],
-    "location": "杭州",
-    "likes": [],
-    "likedByMe": false,
-    "comments": [],
-    "createdAt": 1440936000000
-  },
-  {
     "id": "pdf2015-p11",
     "author": {
       "name": "小明",
@@ -790,7 +774,23 @@
     "likes": [],
     "likedByMe": false,
     "comments": [],
-    "createdAt": 1439718300000
+    "createdAt": 1441100700000
+  },
+  {
+    "id": "pdf2015-p12",
+    "author": {
+      "name": "小明",
+      "initial": "明"
+    },
+    "text": "还记得我的生日愿望么\n说出来好像还真的不灵了",
+    "images": [
+      "assets/uploads/pdf2015-p12.jpg"
+    ],
+    "location": "杭州",
+    "likes": [],
+    "likedByMe": false,
+    "comments": [],
+    "createdAt": 1440936000000
   },
   {
     "id": "post-mu9f041v-b9wpi",
