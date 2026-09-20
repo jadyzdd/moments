@@ -404,7 +404,6 @@
       html += renderPost(post, ym.key);
     });
     els.feed.innerHTML = html;
-    enhanceFeedImages(els.feed);
     renderYmPanel();
   }
 
@@ -477,35 +476,6 @@
 
   var LONG_RATIO = 1.45;
   var WIDE_RATIO = 1.55;
-  var COVER_MIN = 0.78;
-  var COVER_MAX = 1.28;
-
-  function applyAspectClass(el, w, h) {
-    if (!el || !w || !h) return;
-    var r = h / w;
-    var tall = r >= LONG_RATIO;
-    var wide = w / h >= WIDE_RATIO;
-    var cover = r >= COVER_MIN && r <= COVER_MAX;
-    el.classList.toggle('is-long', tall);
-    el.classList.toggle('is-wide', wide && !tall);
-    el.classList.toggle('is-cover', cover && !tall && !wide);
-  }
-
-  function markFeedImageAspect(img) {
-    if (!img) return;
-    function go() {
-      var cell = img.closest('.img-cell');
-      applyAspectClass(cell, img.naturalWidth, img.naturalHeight);
-    }
-    if (img.complete && img.naturalWidth) go();
-    else img.addEventListener('load', go, { once: true });
-  }
-
-  function enhanceFeedImages(root) {
-    var scope = root || document;
-    var imgs = scope.querySelectorAll('.img-grid img');
-    for (var i = 0; i < imgs.length; i++) markFeedImageAspect(imgs[i]);
-  }
 
   function markLightboxAspect() {
     var img = els.lightboxImg;
