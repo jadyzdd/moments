@@ -475,15 +475,20 @@
   }
 
 
-  var LONG_RATIO = 2.05;
-  var WIDE_RATIO = 2.2;
+  var LONG_RATIO = 1.45;
+  var WIDE_RATIO = 1.55;
+  var COVER_MIN = 0.78;
+  var COVER_MAX = 1.28;
 
   function applyAspectClass(el, w, h) {
     if (!el || !w || !h) return;
-    var tall = h / w >= LONG_RATIO;
+    var r = h / w;
+    var tall = r >= LONG_RATIO;
     var wide = w / h >= WIDE_RATIO;
+    var cover = r >= COVER_MIN && r <= COVER_MAX;
     el.classList.toggle('is-long', tall);
     el.classList.toggle('is-wide', wide && !tall);
+    el.classList.toggle('is-cover', cover && !tall && !wide);
   }
 
   function markFeedImageAspect(img) {
@@ -500,6 +505,20 @@
     var scope = root || document;
     var imgs = scope.querySelectorAll('.img-grid img');
     for (var i = 0; i < imgs.length; i++) markFeedImageAspect(imgs[i]);
+  }
+
+  function markLightboxAspect() {
+    var img = els.lightboxImg;
+    var stage = els.lightboxStage;
+    if (!img || !img.naturalWidth) return;
+    var availW = stage ? Math.max(120, stage.clientWidth - 24) : 360;
+    var width = Math.min(availW, 420);
+    var scaledH = width * (img.naturalHeight / img.naturalWidth);
+    var viewH = stage ? stage.clientHeight : window.innerHeight;
+    var long = scaledH > viewH * 0.88 || img.naturalHeight / img.naturalWidth >= LONG_RATIO;
+    img.classList.toggle('is-long', long);
+    img.classList.toggle('is-wide', !long && img.naturalWidth / img.naturalHeight >= WIDE_RATIO);
+    if (stage) stage.classList.toggle('is-long', long);
   }
 
   /* —— Lightbox —— */
@@ -562,17 +581,11 @@
       els.lightboxStage.scrollLeft = 0;
     }
     els.lightboxImg.onload = function () {
-      applyAspectClass(els.lightboxImg, els.lightboxImg.naturalWidth, els.lightboxImg.naturalHeight);
-      if (els.lightboxStage) {
-        els.lightboxStage.classList.toggle(
-          'is-long',
-          els.lightboxImg.classList.contains('is-long')
-        );
-      }
+      markLightboxAspect();
     };
     els.lightboxImg.src = src;
     if (els.lightboxImg.complete && els.lightboxImg.naturalWidth) {
-      els.lightboxImg.onload();
+      markLightboxAspect();
     }
     const multi = lbImages.length > 1;
     els.lightboxCounter.textContent = multi ? lbIndex + 1 + ' / ' + lbImages.length : '';
