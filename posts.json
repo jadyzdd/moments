@@ -16,22 +16,6 @@
     "createdAt": 1487077200000
   },
   {
-    "id": "pdf2016-p01",
-    "author": {
-      "name": "小明",
-      "initial": "明"
-    },
-    "text": "情人节快乐\n亲爱的水爷\n不知不觉已经第三个年头了\n这是我们的2016\n你还记得么",
-    "images": [
-      "assets/uploads/pdf2016-p01.jpg"
-    ],
-    "location": "杭州",
-    "likes": [],
-    "likedByMe": false,
-    "comments": [],
-    "createdAt": 1487073600000
-  },
-  {
     "id": "pdf2016-p37",
     "author": {
       "name": "小明",
