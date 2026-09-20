@@ -999,6 +999,111 @@
     return btoa(unescape(encodeURIComponent(str)));
   }
 
+  function simpleHash(str) {
+    var h = 2166136261;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(16);
+  }
+
+  function isEditorOpen() {
+    var ed = $('adminEditor');
+    return !!(ed && !ed.classList.contains('hidden'));
+  }
+
+  /** 同步前若编辑器仍开着，先落盘，避免「提示成功但改动没写进仓库」。 */
+  function flushOpenEditorBeforeSync() {
+    if (!isEditorOpen()) return { saved: false };
+    var text = ($('adminEditText').value || '').trim();
+    var images = editImages.slice(0, 9);
+    if (!text && !images.length) {
+      throw new Error('发布/编辑窗口还开着，但没有文字也没有图片。请先点「保存」或关闭窗口后再同步。');
+    }
+    saveEditor();
+    return { saved: true };
+  }
+
+  function ghGetFileText(apiUrl, branch, headers) {
+    var url =
+      apiUrl +
+      '?ref=' +
+      encodeURIComponent(branch) +
+      '&t=' +
+      Date.now();
+    return fetch(url, { method: 'GET', headers: ghReadHeaders(headers) }).then(
+      function (res) {
+        return res.text().then(function (t) {
+          var parsed = null;
+          try {
+            parsed = JSON.parse(t);
+          } catch (e) {}
+          if (!res.ok) {
+            throw {
+              status: res.status,
+              body: t,
+              json: parsed,
+              label: '回读校验 ' + apiUrl,
+            };
+          }
+          if (!parsed || !parsed.content) {
+            throw {
+              status: res.status || 500,
+              body: t,
+              json: parsed,
+              label: '回读校验：响应缺少 content',
+            };
+          }
+          var b64 = String(parsed.content).replace(/\s+/g, '');
+          var raw;
+          try {
+            raw = decodeURIComponent(escape(atob(b64)));
+          } catch (e) {
+            throw {
+              status: 500,
+              body: 'base64 decode failed',
+              label: '回读校验解码失败',
+            };
+          }
+          return { text: raw, sha: parsed.sha, path: parsed.path };
+        });
+      }
+    );
+  }
+
+  function normalizeJsonText(s) {
+    try {
+      return JSON.stringify(JSON.parse(s));
+    } catch (e) {
+      return String(s || '').replace(/\s+/g, '');
+    }
+  }
+
+  function verifyRemoteMatches(apiUrl, branch, headers, localText, label) {
+    return ghGetFileText(apiUrl, branch, headers).then(function (remote) {
+      var a = normalizeJsonText(localText);
+      var b = normalizeJsonText(remote.text);
+      if (a !== b) {
+        throw {
+          status: 409,
+          body:
+            '本地与仓库内容不一致（' +
+            label +
+            '）。本地指纹 ' +
+            simpleHash(a) +
+            '，仓库指纹 ' +
+            simpleHash(b) +
+            '。',
+          json: { message: 'verify mismatch' },
+          label: label + ' 回读校验失败',
+        };
+      }
+      return remote;
+    });
+  }
+
+
   function buildPostsJsonText(posts) {
     var list = posts != null ? posts : sortNewest(App.getPosts());
     return JSON.stringify(sortNewest(list), null, 2) + '\n';
@@ -1240,6 +1345,17 @@
           label
         ).catch(function (err) {
           var status = err && err.status;
+          var msg =
+            (err && err.json && err.json.message) ||
+            (err && err.body) ||
+            '';
+          var notChanged =
+            status === 409 &&
+            /not changed|no change|same content/i.test(String(msg));
+          if (notChanged) {
+            /* 内容与仓库一致：视为成功，避免误报冲突 */
+            return { notChanged: true, path: label };
+          }
           var net = isNetworkFetchError(err);
           var retriable = status === 409 || status === 422 || net;
           if (!retriable || n >= maxAttempts) throw err;
@@ -1342,8 +1458,11 @@
       var bytes;
       var uploadCount;
       var allUploads;
+      var localPostsHash;
+      var localProfileHash;
       try {
         setSyncStatus('正在处理本地数据…', 'pending');
+        flushOpenEditorBeforeSync();
         if (draftProfile) {
           readProfileFieldDraft();
           App.setProfile(draftProfile);
@@ -1367,6 +1486,8 @@
         }
         text = buildPostsJsonText(prepared.posts);
         profileText = buildProfileJsonText(preparedProfile.profile);
+        localPostsHash = simpleHash(normalizeJsonText(text));
+        localProfileHash = simpleHash(normalizeJsonText(profileText));
         bytes = utf8ByteLength(text);
         if (bytes > MAX_POSTS_JSON_BYTES) {
           setSyncStatus(
@@ -1461,6 +1582,24 @@
           );
         })
         .then(function () {
+          setSyncStatus('正在回读校验仓库内容…', 'pending');
+          return verifyRemoteMatches(
+            ghContentsApi(owner, repo, 'posts.json'),
+            branch,
+            headers,
+            text,
+            'posts.json'
+          ).then(function () {
+            return verifyRemoteMatches(
+              ghContentsApi(owner, repo, 'profile.json'),
+              branch,
+              headers,
+              profileText,
+              'profile.json'
+            );
+          });
+        })
+        .then(function () {
           App.setPosts(JSON.parse(text));
           App.setProfile(JSON.parse(profileText));
           draftProfile = App.getProfile();
@@ -1469,11 +1608,13 @@
           renderLastSync();
           renderAdminList();
           setSyncStatus(
-            '同步成功' +
+            '同步成功并已校验' +
               (uploadCount
-                ? '（上传 ' + uploadCount + ' 张图，并更新 posts.json / profile.json）'
-                : '（已更新 posts.json / profile.json）') +
-              '。约 1 分钟后刷新页面可见。',
+                ? '（上传 ' + uploadCount + ' 张图，posts/profile 已与仓库一致）'
+                : '（posts/profile 已与仓库一致，指纹 ' +
+                  localPostsHash.slice(0, 6) +
+                  '）') +
+              '。访客页可能有约 1～10 分钟缓存，请强刷或稍后再看。',
             'success'
           );
         })
