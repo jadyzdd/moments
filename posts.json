@@ -929,9 +929,11 @@
       "name": "小明",
       "initial": "明"
     },
-    "text": "纪念2015\n总会存在美好的旧时光里",
+    "text": "纪念2015\n在美好的时光里\n总会存在美好的旧时光里",
     "images": [
-      "assets/uploads/pdf2015-p01.jpg"
+      "assets/uploads/20260920-1kwv6l.jpg",
+      "assets/uploads/20260920-1vjwt3.jpg",
+      "assets/uploads/20260920-14rrzk.jpg"
     ],
     "location": "杭州",
     "likes": [],
