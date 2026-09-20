@@ -42,6 +42,7 @@
     cover: document.getElementById('cover'),
     lightbox: document.getElementById('lightbox'),
     lightboxImg: document.getElementById('lightboxImg'),
+    lightboxStage: document.getElementById('lightboxStage'),
     lightboxClose: document.getElementById('lightboxClose'),
     lightboxPrev: document.getElementById('lightboxPrev'),
     lightboxNext: document.getElementById('lightboxNext'),
@@ -403,6 +404,7 @@
       html += renderPost(post, ym.key);
     });
     els.feed.innerHTML = html;
+    enhanceFeedImages(els.feed);
     renderYmPanel();
   }
 
@@ -472,6 +474,34 @@
     );
   }
 
+
+  var LONG_RATIO = 2.05;
+  var WIDE_RATIO = 2.2;
+
+  function applyAspectClass(el, w, h) {
+    if (!el || !w || !h) return;
+    var tall = h / w >= LONG_RATIO;
+    var wide = w / h >= WIDE_RATIO;
+    el.classList.toggle('is-long', tall);
+    el.classList.toggle('is-wide', wide && !tall);
+  }
+
+  function markFeedImageAspect(img) {
+    if (!img) return;
+    function go() {
+      var cell = img.closest('.img-cell');
+      applyAspectClass(cell, img.naturalWidth, img.naturalHeight);
+    }
+    if (img.complete && img.naturalWidth) go();
+    else img.addEventListener('load', go, { once: true });
+  }
+
+  function enhanceFeedImages(root) {
+    var scope = root || document;
+    var imgs = scope.querySelectorAll('.img-grid img');
+    for (var i = 0; i < imgs.length; i++) markFeedImageAspect(imgs[i]);
+  }
+
   /* —— Lightbox —— */
   function openLightbox(postId, index) {
     const post = findPost(postId);
@@ -496,6 +526,11 @@
     lbCaptionText = '';
     lbCaptionLoc = '';
     els.lightboxImg.removeAttribute('src');
+    els.lightboxImg.classList.remove('is-long', 'is-wide');
+    if (els.lightboxStage) {
+      els.lightboxStage.classList.remove('is-long');
+      els.lightboxStage.scrollTop = 0;
+    }
     if (els.lightboxCaption) {
       els.lightboxCaption.textContent = '';
       els.lightboxCaption.classList.add('hidden');
@@ -520,7 +555,25 @@
 
   function updateLightboxUI() {
     const src = lbImages[lbIndex];
+    els.lightboxImg.classList.remove('is-long', 'is-wide');
+    if (els.lightboxStage) {
+      els.lightboxStage.classList.remove('is-long');
+      els.lightboxStage.scrollTop = 0;
+      els.lightboxStage.scrollLeft = 0;
+    }
+    els.lightboxImg.onload = function () {
+      applyAspectClass(els.lightboxImg, els.lightboxImg.naturalWidth, els.lightboxImg.naturalHeight);
+      if (els.lightboxStage) {
+        els.lightboxStage.classList.toggle(
+          'is-long',
+          els.lightboxImg.classList.contains('is-long')
+        );
+      }
+    };
     els.lightboxImg.src = src;
+    if (els.lightboxImg.complete && els.lightboxImg.naturalWidth) {
+      els.lightboxImg.onload();
+    }
     const multi = lbImages.length > 1;
     els.lightboxCounter.textContent = multi ? lbIndex + 1 + ' / ' + lbImages.length : '';
     els.lightboxCounter.classList.toggle('hidden', !multi);

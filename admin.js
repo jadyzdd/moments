@@ -155,7 +155,10 @@
             }
             var scale = 1;
             var maxEdge = Math.max(w, h);
-            if (maxEdge > IMG_MAX_EDGE) scale = IMG_MAX_EDGE / maxEdge;
+            var ratio = Math.max(h / w, w / h);
+            /* 竖长/横长拼图保留更高像素，避免压缩后字和图糊成一团 */
+            var limit = ratio >= 2.05 ? Math.max(IMG_MAX_EDGE, 2048) : IMG_MAX_EDGE;
+            if (maxEdge > limit) scale = limit / maxEdge;
             var tw = Math.max(1, Math.round(w * scale));
             var th = Math.max(1, Math.round(h * scale));
             var canvas = document.createElement('canvas');

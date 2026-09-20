@@ -312,12 +312,22 @@ body {
 
 .img-grid.n1 {
   grid-template-columns: 1fr;
-  max-width: 220px;
+  max-width: 260px;
 }
 
+/* 单图：按真实比例展示，避免长拼图被裁成 4:3 */
 .img-grid.n1 .img-cell {
-  aspect-ratio: 4 / 3;
-  max-height: 240px;
+  aspect-ratio: auto;
+  max-height: none;
+  background: #f2f2f2;
+}
+
+.img-grid.n1 .img-cell img {
+  width: 100%;
+  height: auto;
+  max-height: min(68vh, 520px);
+  object-fit: contain;
+  object-position: center top;
 }
 
 .img-grid.n2 {
@@ -366,6 +376,21 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* 九宫格里的超长拼图：完整塞进格子，顶部对齐，避免只露中间 */
+.img-cell.is-long {
+  background: #ececec;
+}
+
+.img-cell.is-long img {
+  object-fit: contain;
+  object-position: center top;
+}
+
+.img-cell.is-wide img {
+  object-fit: contain;
+  object-position: center center;
 }
 
 .svg-ph {
@@ -902,7 +927,6 @@ body {
 /* —— Lightbox（朋友圈大图预览） —— */
 body.lightbox-open {
   overflow: hidden;
-  touch-action: none;
 }
 
 .lightbox {
@@ -916,7 +940,6 @@ body.lightbox-open {
   margin: 0 auto;
   background: rgba(0, 0, 0, 0.92);
   animation: fadeIn 0.2s ease;
-  touch-action: none;
 }
 
 .lightbox.hidden {
@@ -942,17 +965,47 @@ body.lightbox-open {
   inset: 0;
 }
 
-.lightbox-img {
+.lightbox-stage {
   position: relative;
   z-index: 1;
   max-width: 100%;
   max-height: 100%;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: pan-y;
+  padding: 48px 12px 72px;
+  box-sizing: border-box;
+}
+
+.lightbox-stage.is-long {
+  align-items: flex-start;
+}
+
+.lightbox-img {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  max-height: calc(100% - 24px);
   width: auto;
   height: auto;
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: auto;
+  margin: auto;
+}
+
+/* 超长图：按宽度铺满，高度随内容，预览里可上下滑动看全貌 */
+.lightbox-img.is-long {
+  max-height: none;
+  width: min(100%, 420px);
+  height: auto;
 }
 
 .lightbox-close {

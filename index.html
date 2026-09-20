@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=img9grid1" />
+  <link rel="stylesheet" href="styles.css?v=longimg2" />
 </head>
 <body>
   <div class="app" id="app">
@@ -56,7 +56,9 @@
     <div class="lightbox-backdrop" aria-hidden="true"></div>
     <button type="button" class="lightbox-close" id="lightboxClose" aria-label="关闭">×</button>
     <button type="button" class="lightbox-nav lightbox-prev hidden" id="lightboxPrev" aria-label="上一张">‹</button>
-    <img class="lightbox-img" id="lightboxImg" alt="预览图" />
+    <div class="lightbox-stage" id="lightboxStage">
+      <img class="lightbox-img" id="lightboxImg" alt="预览图" />
+    </div>
     <button type="button" class="lightbox-nav lightbox-next hidden" id="lightboxNext" aria-label="下一张">›</button>
     <div class="lightbox-counter hidden" id="lightboxCounter"></div>
     <div class="lightbox-caption hidden" id="lightboxCaption"></div>
@@ -223,8 +225,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=img9grid1"></script>
-  <script src="app.js?v=img9grid1"></script>
-  <script src="admin.js?v=img9grid1"></script>
+  <script src="data.js?v=longimg2"></script>
+  <script src="app.js?v=longimg2"></script>
+  <script src="admin.js?v=longimg2"></script>
 </body>
 </html>
