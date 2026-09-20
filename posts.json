@@ -1485,22 +1485,6 @@
     "createdAt": 1380708600000
   },
   {
-    "id": "album-b1-04",
-    "author": {
-      "name": "小明",
-      "initial": "明"
-    },
-    "text": "自此之后的很长一段时间我们没有交集",
-    "images": [
-      "assets/uploads/20130913-b104.jpg"
-    ],
-    "location": "青藏线 · G109公路",
-    "likes": [],
-    "likedByMe": false,
-    "comments": [],
-    "createdAt": 1379087511428
-  },
-  {
     "id": "album-b1-02",
     "author": {
       "name": "小明",
@@ -1552,5 +1536,21 @@
     "likedByMe": false,
     "comments": [],
     "createdAt": 1375155000000
+  },
+  {
+    "id": "album-b1-04",
+    "author": {
+      "name": "小明",
+      "initial": "明"
+    },
+    "text": "自此之后的很长一段时间我们没有交集",
+    "images": [
+      "assets/uploads/20130913-b104.jpg"
+    ],
+    "location": "青藏线 · G109公路",
+    "likes": [],
+    "likedByMe": false,
+    "comments": [],
+    "createdAt": 1371138660000
   }
 ]
