@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=bgm1" />
+  <link rel="stylesheet" href="styles.css?v=bgm2" />
 </head>
 <body>
   <div class="app" id="app">
@@ -164,13 +164,13 @@
           </div>
           <div class="admin-profile-row">
             <span class="admin-profile-label">背景音乐</span>
-            <p class="admin-music-hint" id="adminMusicHint">未设置。上传 mp3/m4a/ogg 后点「保存资料」再「同步」；首页会出现音乐开关。</p>
+            <p class="admin-music-hint" id="adminMusicHint">未设置。请上传 mp3/m4a 文件（推荐），不要粘贴曲目网页链接；保存后再同步。</p>
             <div class="admin-profile-actions">
               <label class="btn-secondary admin-add-img" for="adminMusicFile">选音乐</label>
               <button type="button" class="admin-tool muted" id="adminMusicClear">清除</button>
               <input type="file" id="adminMusicFile" class="visually-hidden-file" accept="audio/mpeg,audio/mp4,audio/aac,audio/ogg,audio/wav,.mp3,.m4a,.aac,.ogg,.wav" />
             </div>
-            <input type="url" id="adminMusicUrl" maxlength="300" placeholder="或粘贴音乐链接 / 相对路径（可选）" />
+            <input type="url" id="adminMusicUrl" maxlength="300" placeholder="可选：音频直链（须以 .mp3/.m4a 结尾，不要贴曲目网页）" />
           </div>
           <p class="admin-img-tip" id="adminProfileTip">保存后仅本机生效；点「同步」才会推送到仓库供访客看到。</p>
           <div class="admin-profile-actions">
@@ -240,8 +240,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=bgm1"></script>
-  <script src="app.js?v=bgm1"></script>
-  <script src="admin.js?v=bgm1"></script>
+  <script src="data.js?v=bgm2"></script>
+  <script src="app.js?v=bgm2"></script>
+  <script src="admin.js?v=bgm2"></script>
 </body>
 </html>

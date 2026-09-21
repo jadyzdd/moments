@@ -349,6 +349,39 @@
     return (profile.musicUrl || '').trim();
   }
 
+  function isPlayableMusicUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    var u = url.trim();
+    if (!u) return false;
+    if (u.indexOf('data:audio/') === 0) return true;
+    /* 相对路径音频文件 */
+    if (/^assets\/.+\.(mp3|m4a|aac|ogg|wav|mpeg)(\?.*)?$/i.test(u)) return true;
+    if (!/^https?:\/\//i.test(u)) {
+      return /\.(mp3|m4a|aac|ogg|wav|mpeg)(\?.*)?$/i.test(u);
+    }
+    try {
+      var path = new URL(u).pathname || '';
+      if (/\.(mp3|m4a|aac|ogg|wav|mpeg)$/i.test(path)) return true;
+    } catch (e) {
+      return false;
+    }
+    /* 网页链接（如 Epidemic Sound / YouTube 曲目页）不能直接给 <audio> 播 */
+    return false;
+  }
+
+  function musicUrlRejectReason(url) {
+    if (!url) return '还没有设置背景音乐';
+    if (/epidemicsound\.com/i.test(url)) {
+      return '这是 Epidemic Sound 的网页链接，不能直接播放。请在网站下载 mp3 后，到管理页「封面与资料」用「选音乐」上传。';
+    }
+    if (/youtube\.com|youtu\.be|music\.163\.com|y\.qq\.com|open\.spotify\.com/i.test(url)) {
+      return '这是平台页面链接，浏览器无法当背景音乐播放。请下载 mp3 文件后上传，或粘贴直链（以 .mp3 / .m4a 结尾）。';
+    }
+    return '音乐地址无效：需要 mp3/m4a 文件，或可直接访问的音频直链（不要贴曲目网页）。';
+  }
+
+
+
   function resolveMusicSrc(url) {
     if (!url) return '';
     if (/^https?:\/\//i.test(url) || url.indexOf('data:') === 0) return url;
@@ -371,7 +404,7 @@
     var btn = els.btnMusic;
     if (!audio || !btn) return;
     var url = getMusicUrl();
-    if (!url) {
+    if (!url || !isPlayableMusicUrl(url)) {
       try {
         audio.pause();
       } catch (e) {}
@@ -379,6 +412,8 @@
       try {
         audio.load();
       } catch (e2) {}
+      /* 无效链接也先藏按钮，避免点了没声音 */
+      if (btn) btn.classList.add('hidden');
       updateMusicFabUI(false);
       return;
     }
@@ -449,10 +484,20 @@
   }
 
   function toggleBgm() {
-    if (!getMusicUrl()) return;
+    var url = getMusicUrl();
+    if (!url || !isPlayableMusicUrl(url)) {
+      alert(musicUrlRejectReason(url));
+      return;
+    }
     var audio = els.bgMusic;
     if (audio && !audio.paused) pauseBgm();
-    else tryPlayBgm();
+    else {
+      tryPlayBgm().then(function (ok) {
+        if (!ok) {
+          alert('暂时无法播放：请确认已上传音频文件，或链接是可直接打开的 mp3/m4a 地址。');
+        }
+      });
+    }
   }
 
   function bindMusicFab() {
@@ -471,6 +516,9 @@
         updateMusicFabUI(false);
       });
       els.bgMusic.addEventListener('ended', function () {
+        updateMusicFabUI(false);
+      });
+      els.bgMusic.addEventListener('error', function () {
         updateMusicFabUI(false);
       });
     }

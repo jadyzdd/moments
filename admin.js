@@ -635,7 +635,7 @@
       urlEl.value = mu.indexOf('data:') === 0 ? '' : mu;
     }
     if (hint) {
-      if (!mu) hint.textContent = '未设置。上传 mp3/m4a/ogg 后点「保存资料」再「同步」；首页会出现音乐开关。';
+      if (!mu) hint.textContent = '未设置。请上传 mp3/m4a 文件（推荐），不要粘贴 Epidemic Sound / 网易云等网页链接；保存后再同步。';
       else if (mu.indexOf('data:') === 0) hint.textContent = '已选本地音频（待同步上传到仓库）。';
       else hint.textContent = '当前：' + mu;
     }
@@ -677,6 +677,14 @@
   function saveProfileFromForm() {
     if (!App) return;
     var d = readProfileFieldDraft();
+    var mu = (d.musicUrl || '').trim();
+    if (mu && !looksLikeAudioFileUrl(mu)) {
+      setProfileTip(
+        '音乐地址无效：Epidemic Sound / 网易云等是网页，不能播放。请用「选音乐」上传 mp3，或粘贴以 .mp3/.m4a 结尾的直链。',
+        true
+      );
+      return;
+    }
     App.setProfile(d);
     draftProfile = App.getProfile();
     renderProfilePreviews();
@@ -715,6 +723,20 @@
     else d.avatarUrl = '';
     renderProfilePreviews();
     setProfileTip('已清除，请点「保存资料」写入本机。', false);
+  }
+
+  function looksLikeAudioFileUrl(u) {
+    if (!u || typeof u !== 'string') return false;
+    u = u.trim();
+    if (!u) return false;
+    if (u.indexOf('data:audio/') === 0) return true;
+    if (/^assets\/.+\.(mp3|m4a|aac|ogg|wav)(\?.*)?$/i.test(u)) return true;
+    try {
+      if (/^https?:\/\//i.test(u)) {
+        return /\.(mp3|m4a|aac|ogg|wav)$/i.test(new URL(u).pathname || '');
+      }
+    } catch (e) {}
+    return /\.(mp3|m4a|aac|ogg|wav)(\?.*)?$/i.test(u);
   }
 
   function isAudioDataUrl(s) {
