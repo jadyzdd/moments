@@ -1936,6 +1936,10 @@ body.admin-open .ym-entry {
   opacity: 0.72;
 }
 
+.music-fab.is-unset {
+  opacity: 0.85;
+}
+
 .music-fab.is-muted::after {
   content: "";
   position: absolute;

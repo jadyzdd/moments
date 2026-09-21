@@ -7,7 +7,7 @@
   <meta name="description" content="类似微信朋友圈的日常生活可分享网页" />
   <title>朋友圈</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=bgm3" />
+  <link rel="stylesheet" href="styles.css?v=bgm4" />
 </head>
 <body>
   <div class="app" id="app">
@@ -48,7 +48,7 @@
       <button type="button" class="scroll-fab" id="btnScrollBottom" title="直达底部" aria-label="直达底部">↓</button>
     </div>
     <!-- 背景音乐（微信朋友圈风格开关；需用户点击后才出声） -->
-    <button type="button" class="music-fab hidden" id="btnMusic" aria-label="背景音乐" title="背景音乐" aria-pressed="false">
+    <button type="button" class="music-fab is-muted is-unset" id="btnMusic" aria-label="背景音乐" title="背景音乐" aria-pressed="false">
       <span class="music-fab-disc" aria-hidden="true">♪</span>
     </button>
     <audio id="bgMusic" preload="none" loop playsinline></audio>
@@ -240,8 +240,8 @@
   <!-- 轻提示 toast -->
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=bgm3"></script>
-  <script src="app.js?v=bgm3"></script>
-  <script src="admin.js?v=bgm3"></script>
+  <script src="data.js?v=bgm4"></script>
+  <script src="app.js?v=bgm4"></script>
+  <script src="admin.js?v=bgm4"></script>
 </body>
 </html>

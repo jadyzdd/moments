@@ -391,12 +391,19 @@
   function updateMusicFabUI(playing) {
     var btn = els.btnMusic;
     if (!btn) return;
-    var has = !!getMusicUrl();
-    btn.classList.toggle('hidden', !has);
-    btn.classList.toggle('is-playing', !!playing);
-    btn.classList.toggle('is-muted', has && !playing);
-    btn.setAttribute('aria-pressed', playing ? 'true' : 'false');
-    btn.title = !has ? '未设置背景音乐' : playing ? '关闭背景音乐' : '打开背景音乐';
+    var url = getMusicUrl();
+    var has = !!(url && isPlayableMusicUrl(url));
+    /* 始终显示音符按钮；未设置可用音乐时呈静音态 */
+    btn.classList.remove('hidden');
+    btn.classList.toggle('is-playing', !!(has && playing));
+    btn.classList.toggle('is-muted', !(has && playing));
+    btn.classList.toggle('is-unset', !has);
+    btn.setAttribute('aria-pressed', has && playing ? 'true' : 'false');
+    btn.title = !has
+      ? '未设置背景音乐（请在管理页上传 mp3）'
+      : playing
+        ? '关闭背景音乐'
+        : '打开背景音乐';
   }
 
   function syncMusicFromProfile() {
@@ -412,8 +419,6 @@
       try {
         audio.load();
       } catch (e2) {}
-      /* 无效链接也先藏按钮，避免点了没声音 */
-      if (btn) btn.classList.add('hidden');
       updateMusicFabUI(false);
       return;
     }
