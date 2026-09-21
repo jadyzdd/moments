@@ -23,6 +23,7 @@
   var MAX_POSTS_JSON_BYTES = 2 * 1024 * 1024;
   /** Warn / block sync for a single uploaded image file */
   var MAX_FILE_BYTES = 3 * 1024 * 1024;
+  var MAX_MUSIC_BYTES = 8 * 1024 * 1024;
   var IMG_MAX_EDGE = 1280;
   var IMG_JPEG_QUALITY = 0.76;
   var UPLOADS_DIR = 'assets/uploads';
@@ -593,6 +594,7 @@
         coverUrl: '',
         avatarUrl: '',
         coverHue: 200,
+        musicUrl: '',
       };
     }
     return draftProfile;
@@ -626,6 +628,17 @@
         avPrev.textContent = d.initial || (d.name ? d.name.slice(0, 1) : '?');
       }
     }
+    var hint = $('adminMusicHint');
+    var urlEl = $('adminMusicUrl');
+    var mu = (d.musicUrl || '').trim();
+    if (urlEl && document.activeElement !== urlEl) {
+      urlEl.value = mu.indexOf('data:') === 0 ? '' : mu;
+    }
+    if (hint) {
+      if (!mu) hint.textContent = '未设置。上传 mp3/m4a/ogg 后点「保存资料」再「同步」；首页会出现音乐开关。';
+      else if (mu.indexOf('data:') === 0) hint.textContent = '已选本地音频（待同步上传到仓库）。';
+      else hint.textContent = '当前：' + mu;
+    }
   }
 
   function loadProfileForm() {
@@ -635,6 +648,11 @@
     var bioEl = $('adminProfileBio');
     if (nameEl) nameEl.value = draftProfile.name || '';
     if (bioEl) bioEl.value = draftProfile.bio || '';
+    var musicEl = $('adminMusicUrl');
+    if (musicEl) {
+      var mu = draftProfile.musicUrl || '';
+      musicEl.value = mu.indexOf('data:') === 0 ? '' : mu;
+    }
     renderProfilePreviews();
     setProfileTip('', false);
   }
@@ -646,6 +664,13 @@
     if (nameEl) d.name = (nameEl.value || '').trim() || d.name;
     if (bioEl) d.bio = (bioEl.value || '').trim();
     d.initial = d.name ? d.name.slice(0, 1) : d.initial || '?';
+    var musicEl = $('adminMusicUrl');
+    if (musicEl) {
+      var typed = (musicEl.value || '').trim();
+      /* 若刚选了本地 data: 音频，不要被空输入框清掉 */
+      if (typed) d.musicUrl = typed;
+      else if (!(d.musicUrl && String(d.musicUrl).indexOf('data:') === 0)) d.musicUrl = '';
+    }
     return d;
   }
 
@@ -692,6 +717,92 @@
     setProfileTip('已清除，请点「保存资料」写入本机。', false);
   }
 
+  function isAudioDataUrl(s) {
+    return (
+      typeof s === 'string' &&
+      /^data:audio\/[a-z0-9.+-]+;base64,/i.test(s)
+    );
+  }
+
+  function extFromAudioMime(mime) {
+    mime = (mime || '').toLowerCase();
+    if (mime.indexOf('mpeg') >= 0 || mime === 'audio/mp3') return 'mp3';
+    if (mime.indexOf('mp4') >= 0 || mime.indexOf('m4a') >= 0 || mime.indexOf('aac') >= 0)
+      return 'm4a';
+    if (mime.indexOf('ogg') >= 0) return 'ogg';
+    if (mime.indexOf('wav') >= 0) return 'wav';
+    return 'mp3';
+  }
+
+  function readAudioFileAsDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file) {
+        resolve(null);
+        return;
+      }
+      var mime = file.type || '';
+      if (!mime || mime.indexOf('audio/') !== 0) {
+        var fname = (file.name || '').toLowerCase();
+        if (/\.(mp3|m4a|aac|ogg|wav)$/.test(fname)) mime = 'audio/mpeg';
+        else {
+          resolve(null);
+          return;
+        }
+      }
+      if (file.size > MAX_MUSIC_BYTES) {
+        reject(
+          new Error(
+            '音频超过 ' + formatBytes(MAX_MUSIC_BYTES) + '，请先压缩或换较短的曲子'
+          )
+        );
+        return;
+      }
+      var fr = new FileReader();
+      fr.onerror = function () {
+        reject(fr.error || new Error('read failed'));
+      };
+      fr.onload = function () {
+        resolve(fr.result);
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  function pickProfileMusic(file) {
+    if (!file) return Promise.resolve();
+    setProfileTip('正在读取音频…', false);
+    return readAudioFileAsDataUrl(file)
+      .then(function (url) {
+        if (!url) {
+          setProfileTip('请选择 mp3 / m4a / ogg / wav 音频文件', true);
+          return;
+        }
+        var d = ensureDraftProfile();
+        d.musicUrl = url;
+        var urlEl = $('adminMusicUrl');
+        if (urlEl) urlEl.value = '';
+        renderProfilePreviews();
+        setProfileTip(
+          '已选好音乐（' +
+            formatBytes(file.size) +
+            '），请点「保存资料」写入本机，再「同步」。',
+          false
+        );
+      })
+      .catch(function (err) {
+        setProfileTip(err && err.message ? err.message : String(err), true);
+      });
+  }
+
+  function clearProfileMusic() {
+    var d = ensureDraftProfile();
+    d.musicUrl = '';
+    var urlEl = $('adminMusicUrl');
+    if (urlEl) urlEl.value = '';
+    renderProfilePreviews();
+    setProfileTip('已清除背景音乐，请点「保存资料」写入本机。', false);
+  }
+
   /**
    * If cover/avatar are raster data URLs, queue uploads to fixed asset paths
    * and rewrite draft to relative paths for profile.json.
@@ -725,6 +836,33 @@
     handle('coverUrl', 'cover');
     handle('avatarUrl', 'avatar');
 
+    var musicVal = cloned.musicUrl;
+    if (isAudioDataUrl(musicVal)) {
+      var m = /^data:(audio\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(musicVal);
+      if (m) {
+        var amime = m[1].toLowerCase();
+        var ab64 = m[2].replace(/\s+/g, '');
+        var asize = estimateBase64Bytes(ab64);
+        if (asize > MAX_MUSIC_BYTES) {
+          oversized.push({ field: 'musicUrl', size: asize });
+        } else {
+          var aext = extFromAudioMime(amime);
+          var arel = 'assets/music/bgm.' + aext;
+          uploads.push({
+            path: arel,
+            content: ab64,
+            size: asize,
+            mime: amime,
+          });
+          cloned.musicUrl = arel;
+        }
+      }
+    } else if (typeof musicVal === 'string') {
+      cloned.musicUrl = musicVal.trim();
+    } else {
+      cloned.musicUrl = '';
+    }
+
     // Normalize for public JSON (no savedAt)
     var out = {
       name: cloned.name || '',
@@ -733,6 +871,7 @@
       coverUrl: cloned.coverUrl || '',
       avatarUrl: cloned.avatarUrl || '',
       coverHue: typeof cloned.coverHue === 'number' ? cloned.coverHue : 200,
+      musicUrl: cloned.musicUrl || '',
     };
 
     return { profile: out, uploads: uploads, oversized: oversized };
@@ -1775,6 +1914,18 @@
     if ($('adminAvatarClear')) {
       $('adminAvatarClear').addEventListener('click', function () {
         clearProfileImage('avatar');
+      });
+    }
+    if ($('adminMusicFile')) {
+      $('adminMusicFile').addEventListener('change', function () {
+        var f = this.files && this.files[0];
+        this.value = '';
+        pickProfileMusic(f);
+      });
+    }
+    if ($('adminMusicClear')) {
+      $('adminMusicClear').addEventListener('click', function () {
+        clearProfileMusic();
       });
     }
 

@@ -16,6 +16,7 @@
       coverUrl: '',
       avatarUrl: '',
       coverHue: 200,
+      musicUrl: '',
     };
   }
 
@@ -48,6 +49,8 @@
     lightboxNext: document.getElementById('lightboxNext'),
     lightboxCounter: document.getElementById('lightboxCounter'),
     lightboxCaption: document.getElementById('lightboxCaption'),
+    btnMusic: document.getElementById('btnMusic'),
+    bgMusic: document.getElementById('bgMusic'),
     btnYm: document.getElementById('btnYm'),
     ymMask: document.getElementById('ymMask'),
     ymYearCol: document.getElementById('ymYearCol'),
@@ -153,6 +156,7 @@
     var avatarUrl = typeof raw.avatarUrl === 'string' ? raw.avatarUrl : '';
     var coverHue =
       typeof raw.coverHue === 'number' && !isNaN(raw.coverHue) ? raw.coverHue : base.coverHue;
+    var musicUrl = typeof raw.musicUrl === 'string' ? raw.musicUrl.trim() : '';
     return {
       name: name,
       bio: bio,
@@ -160,6 +164,7 @@
       coverUrl: coverUrl,
       avatarUrl: avatarUrl,
       coverHue: coverHue,
+      musicUrl: musicUrl,
     };
   }
 
@@ -171,6 +176,7 @@
     profile.coverUrl = n.coverUrl;
     profile.avatarUrl = n.avatarUrl;
     profile.coverHue = n.coverHue;
+    profile.musicUrl = n.musicUrl;
     return profile;
   }
 
@@ -197,6 +203,7 @@
           coverUrl: profile.coverUrl || '',
           avatarUrl: profile.avatarUrl || '',
           coverHue: profile.coverHue,
+          musicUrl: profile.musicUrl || '',
           savedAt: Date.now(),
         })
       );
@@ -330,6 +337,145 @@
     return (prefix || 'id') + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
   }
 
+
+  /* —— Background music —— */
+  var BGM_MUTE_KEY = 'moments_bgm_muted_v1';
+  var bgmWantPlay = true;
+  try {
+    bgmWantPlay = localStorage.getItem(BGM_MUTE_KEY) !== '1';
+  } catch (e) {}
+
+  function getMusicUrl() {
+    return (profile.musicUrl || '').trim();
+  }
+
+  function resolveMusicSrc(url) {
+    if (!url) return '';
+    if (/^https?:\/\//i.test(url) || url.indexOf('data:') === 0) return url;
+    return url;
+  }
+
+  function updateMusicFabUI(playing) {
+    var btn = els.btnMusic;
+    if (!btn) return;
+    var has = !!getMusicUrl();
+    btn.classList.toggle('hidden', !has);
+    btn.classList.toggle('is-playing', !!playing);
+    btn.classList.toggle('is-muted', has && !playing);
+    btn.setAttribute('aria-pressed', playing ? 'true' : 'false');
+    btn.title = !has ? '未设置背景音乐' : playing ? '关闭背景音乐' : '打开背景音乐';
+  }
+
+  function syncMusicFromProfile() {
+    var audio = els.bgMusic;
+    var btn = els.btnMusic;
+    if (!audio || !btn) return;
+    var url = getMusicUrl();
+    if (!url) {
+      try {
+        audio.pause();
+      } catch (e) {}
+      audio.removeAttribute('src');
+      try {
+        audio.load();
+      } catch (e2) {}
+      updateMusicFabUI(false);
+      return;
+    }
+    var src = resolveMusicSrc(url);
+    var abs = src;
+    try {
+      abs = new URL(src, window.location.href).href;
+    } catch (e3) {}
+    var cur = '';
+    try {
+      cur = audio.currentSrc || audio.src || '';
+    } catch (e4) {}
+    if (cur !== abs) {
+      audio.src = src;
+      try {
+        audio.load();
+      } catch (e5) {}
+    }
+    updateMusicFabUI(!audio.paused && !audio.ended);
+    if (bgmWantPlay) {
+      tryPlayBgm();
+    } else {
+      try {
+        audio.pause();
+      } catch (e6) {}
+      updateMusicFabUI(false);
+    }
+  }
+
+  function tryPlayBgm() {
+    var audio = els.bgMusic;
+    if (!audio || !getMusicUrl()) {
+      updateMusicFabUI(false);
+      return Promise.resolve(false);
+    }
+    bgmWantPlay = true;
+    try {
+      localStorage.setItem(BGM_MUTE_KEY, '0');
+    } catch (e) {}
+    var p = audio.play();
+    if (p && typeof p.then === 'function') {
+      return p
+        .then(function () {
+          updateMusicFabUI(true);
+          return true;
+        })
+        .catch(function () {
+          updateMusicFabUI(false);
+          return false;
+        });
+    }
+    updateMusicFabUI(!audio.paused);
+    return Promise.resolve(!audio.paused);
+  }
+
+  function pauseBgm() {
+    var audio = els.bgMusic;
+    bgmWantPlay = false;
+    try {
+      localStorage.setItem(BGM_MUTE_KEY, '1');
+    } catch (e) {}
+    if (audio) {
+      try {
+        audio.pause();
+      } catch (e2) {}
+    }
+    updateMusicFabUI(false);
+  }
+
+  function toggleBgm() {
+    if (!getMusicUrl()) return;
+    var audio = els.bgMusic;
+    if (audio && !audio.paused) pauseBgm();
+    else tryPlayBgm();
+  }
+
+  function bindMusicFab() {
+    if (els.btnMusic) {
+      els.btnMusic.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleBgm();
+      });
+    }
+    if (els.bgMusic) {
+      els.bgMusic.addEventListener('play', function () {
+        updateMusicFabUI(true);
+      });
+      els.bgMusic.addEventListener('pause', function () {
+        updateMusicFabUI(false);
+      });
+      els.bgMusic.addEventListener('ended', function () {
+        updateMusicFabUI(false);
+      });
+    }
+  }
+
   /* —— Render —— */
   function renderProfile() {
     els.nickname.textContent = profile.name;
@@ -355,6 +501,7 @@
       av.style.background = m ? m[1] : styleFrag;
     }
     applyCover();
+    syncMusicFromProfile();
   }
 
   function applyCover() {
@@ -1309,6 +1456,7 @@
   }
 
   bindScrollFabs();
+  bindMusicFab();
 
   /* —— Init —— */
   // 先本地/示例渲染，再尝试覆盖为 posts.json / profile.json（访客共享源）
@@ -1346,6 +1494,7 @@
         coverUrl: profile.coverUrl || '',
         avatarUrl: profile.avatarUrl || '',
         coverHue: profile.coverHue,
+        musicUrl: profile.musicUrl || '',
       };
     },
     setProfile: function (next) {
@@ -1354,6 +1503,10 @@
       renderProfile();
       return profile;
     },
+    syncMusicFromProfile: syncMusicFromProfile,
+    tryPlayBgm: tryPlayBgm,
+    pauseBgm: pauseBgm,
+
     saveProfile: saveProfile,
     renderProfile: renderProfile,
     save: save,
