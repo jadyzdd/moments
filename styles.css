@@ -1902,7 +1902,8 @@ body.admin-open .ym-entry {
   position: fixed;
   z-index: 45;
   right: max(14px, calc((100vw - var(--max-w)) / 2 + 14px));
-  top: calc(14px + env(safe-area-inset-top, 0px));
+  /* 避开手机顶部栏；放在封面中下部，方便看见 */
+  top: calc(env(safe-area-inset-top, 0px) + 120px);
   width: 40px;
   height: 40px;
   border: none;
