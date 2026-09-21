@@ -100,8 +100,42 @@
                 return Object.assign({}, c);
               })
             : [],
-          createdAt: typeof p.createdAt === 'number' ? p.createdAt : Date.now(),
+          createdAt: (function () {
+            var c = p.createdAt;
+            if (typeof c === 'number' && !isNaN(c)) return c;
+            if (typeof c === 'string' && /^\d+$/.test(c.trim())) return Number(c.trim());
+            var parsed = Date.parse(c);
+            if (!isNaN(parsed)) return parsed;
+            return Date.now();
+          })(),
         };
+      })
+      .sort(function (a, b) {
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+  }
+
+  /** 按 id 合并两份动态：两边都保留；同一 id 以 primary 为准（通常是本机编辑） */
+  function mergePostsById(primary, secondary) {
+    var map = {};
+    var order = [];
+    function ingest(list, prefer) {
+      (list || []).forEach(function (p) {
+        if (!p || !p.id) return;
+        if (!map[p.id]) {
+          map[p.id] = p;
+          order.push(p.id);
+        } else if (prefer) {
+          map[p.id] = p;
+        }
+      });
+    }
+    /* secondary first, then primary overwrites */
+    ingest(secondary, false);
+    ingest(primary, true);
+    return order
+      .map(function (id) {
+        return map[id];
       })
       .sort(function (a, b) {
         return (b.createdAt || 0) - (a.createdAt || 0);
@@ -133,13 +167,25 @@
   }
 
   function save() {
+    var payload = JSON.stringify({
+      posts: posts,
+      coverHue: profile.coverHue,
+      savedAt: Date.now(),
+    });
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ posts: posts, coverHue: profile.coverHue, savedAt: Date.now() })
-      );
+      localStorage.setItem(STORAGE_KEY, payload);
+      return true;
     } catch (e) {
       console.warn('save failed', e);
+      try {
+        /* 配额满时丢掉旧缓存再试一次，避免下次打开还是过期列表 */
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.setItem(STORAGE_KEY, payload);
+        return true;
+      } catch (e2) {
+        console.warn('save retry failed', e2);
+        return false;
+      }
     }
   }
 
@@ -249,6 +295,12 @@
    * 优先拉取仓库根目录 posts.json（GitHub Pages 共享源）；
    * 成功则写入 localStorage；失败则沿用本地 / 示例。
    */
+  var postsPublish = {
+    ready: false,
+    ok: false,
+    promise: null,
+  };
+
   function fetchPublishedPosts() {
     var url = 'posts.json?v=' + Date.now();
     return fetch(url, { cache: 'no-store' })
@@ -260,14 +312,26 @@
         var list = Array.isArray(data) ? data : data && data.posts;
         var normalized = normalizePosts(list);
         if (!normalized) throw new Error('invalid posts.json');
-        posts = normalized;
+        /* 仓库为权威；本机仅保留仓库里还没有的 id（未同步的本地草稿） */
+        var localHad = posts && posts.length ? posts : [];
+        posts = mergePostsById(normalized, localHad);
         save();
+        postsPublish.ok = true;
         return true;
       })
       .catch(function (err) {
         console.warn('posts.json fetch failed, using local/seed', err);
+        postsPublish.ok = false;
         return false;
+      })
+      .then(function (ok) {
+        postsPublish.ready = true;
+        return ok;
       });
+  }
+
+  function whenPublishedPostsReady() {
+    return postsPublish.promise || Promise.resolve(postsPublish.ok);
   }
 
   /* —— Time format —— */
@@ -1533,8 +1597,9 @@
   renderProfile();
   renderFeed();
 
-  fetchPublishedPosts().then(function (ok) {
-    if (ok) renderFeed();
+  postsPublish.promise = fetchPublishedPosts().then(function (ok) {
+    renderFeed();
+    return ok;
   });
   fetchPublishedProfile().then(function (ok) {
     if (ok) renderProfile();
@@ -1551,6 +1616,9 @@
       save();
       renderFeed();
     },
+    mergePostsById: mergePostsById,
+    whenPublishedPostsReady: whenPublishedPostsReady,
+    fetchPublishedPosts: fetchPublishedPosts,
     getProfile: function () {
       return {
         name: profile.name,

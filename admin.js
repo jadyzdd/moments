@@ -1790,7 +1790,76 @@
     return next();
   }
 
+  function fetchRemotePostsForMerge(owner, repo, branch, token) {
+    if (!App || !token) return Promise.resolve();
+    var api = ghContentsApi(owner, repo, 'posts.json') + '?ref=' + encodeURIComponent(branch);
+    return fetch(api, { headers: ghApiHeaders(token), cache: 'no-store' })
+      .then(function (res) {
+        if (res.status === 404) return null;
+        return res.text().then(function (t) {
+          var parsed = null;
+          try {
+            parsed = JSON.parse(t);
+          } catch (e) {}
+          if (!res.ok) {
+            throw {
+              status: res.status,
+              body: t,
+              json: parsed,
+              label: '读取仓库 posts.json',
+            };
+          }
+          return parsed;
+        });
+      })
+      .then(function (meta) {
+        if (!meta || !meta.content) return null;
+        var jsonText;
+        try {
+          jsonText = decodeURIComponent(escape(atob(String(meta.content).replace(/\s+/g, ''))));
+        } catch (e) {
+          try {
+            jsonText = atob(String(meta.content).replace(/\s+/g, ''));
+          } catch (e2) {
+            return null;
+          }
+        }
+        var data;
+        try {
+          data = JSON.parse(jsonText);
+        } catch (e3) {
+          return null;
+        }
+        var remoteList = Array.isArray(data) ? data : data && data.posts;
+        if (!Array.isArray(remoteList)) return null;
+        var localList = App.getPosts() || [];
+        var merged = App.mergePostsById
+          ? App.mergePostsById(localList, remoteList)
+          : localList;
+        var before = localList.length;
+        App.setPosts(merged);
+        var added = merged.length - before;
+        if (added > 0) {
+          setSyncStatus(
+            '已与仓库合并，补回 ' + added + ' 条本机缺少的动态，继续同步…',
+            'pending'
+          );
+        }
+        return merged;
+      })
+      .catch(function (err) {
+        /* 读仓库失败不阻断同步，但可能仍有覆盖风险；给出提示 */
+        console.warn('merge remote posts failed', err);
+        setSyncStatus(
+          '未能读取仓库动态做合并，将仅用本机数据同步（若本机偏旧可能丢条目）。继续…',
+          'pending'
+        );
+        return null;
+      });
+  }
+
   function syncToGitHub() {
+
     if (syncing) return;
     setSyncStatus('准备同步…', 'pending');
     persistGhFields();
@@ -1819,7 +1888,18 @@
       var localProfileHash;
       setSyncStatus('正在处理本地数据…', 'pending');
       var expectMusicUpload = !!pendingMusicFile;
-      resolvePendingMusicForSync()
+      var ready =
+        App.whenPublishedPostsReady
+          ? App.whenPublishedPostsReady()
+          : Promise.resolve(true);
+      ready
+        .then(function () {
+          /* 同步前再拉一次仓库，与本机合并，避免旧缓存把纪念册等条目覆盖掉 */
+          return fetchRemotePostsForMerge(owner, repo, branch, token);
+        })
+        .then(function () {
+          return resolvePendingMusicForSync();
+        })
         .then(function () {
       try {
         flushOpenEditorBeforeSync();
