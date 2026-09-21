@@ -1733,23 +1733,40 @@
       var localPostsHash;
       var localProfileHash;
       setSyncStatus('正在处理本地数据…', 'pending');
+      var expectMusicUpload = !!pendingMusicFile;
       resolvePendingMusicForSync()
         .then(function () {
       try {
         flushOpenEditorBeforeSync();
         if (draftProfile) {
           readProfileFieldDraft();
-          if (draftProfile.musicUrl === 'assets/music/bgm-pending' && pendingMusicFile) {
-            /* music data already injected by resolvePendingMusicForSync into draftProfile */
-          } else {
-            App.setProfile(draftProfile);
-            draftProfile = App.getProfile();
-          }
+        }
+        var profileForSync = draftProfile || App.getProfile();
+        var hasAudioData =
+          profileForSync &&
+          typeof profileForSync.musicUrl === 'string' &&
+          profileForSync.musicUrl.indexOf('data:audio/') === 0;
+        /* 大音频不要写入 localStorage，只用于本次同步上传 */
+        if (draftProfile && !hasAudioData && !pendingMusicFile) {
+          App.setProfile(draftProfile);
+          draftProfile = App.getProfile();
+          profileForSync = draftProfile;
         }
         prepared = preparePostsForSync(App.getPosts());
-        preparedProfile = prepareProfileForSync(
-          draftProfile || App.getProfile()
-        );
+        preparedProfile = prepareProfileForSync(profileForSync);
+        if (expectMusicUpload) {
+          var musicOk =
+            preparedProfile.profile &&
+            preparedProfile.profile.musicUrl &&
+            preparedProfile.uploads.some(function (u) {
+              return u.path && u.path.indexOf('assets/music/') === 0;
+            });
+          if (!musicOk) {
+            throw new Error(
+              '背景音乐没有进入本次同步。请重新点「选音乐」选择 mp3，然后不要刷新页面，立刻点「保存资料」再「同步」。'
+            );
+          }
+        }
         if (prepared.oversized.length || preparedProfile.oversized.length) {
           var biggest = (prepared.oversized[0] || preparedProfile.oversized[0]).size;
           setSyncStatus(
@@ -1896,6 +1913,11 @@
           lsSet(GH_LAST_SYNC_KEY, String(Date.now()));
           renderLastSync();
           renderAdminList();
+          var musicPath =
+            (preparedProfile &&
+              preparedProfile.profile &&
+              preparedProfile.profile.musicUrl) ||
+            '';
           setSyncStatus(
             '同步成功并已校验' +
               (uploadCount
@@ -1903,6 +1925,7 @@
                 : '（posts/profile 已与仓库一致，指纹 ' +
                   localPostsHash.slice(0, 6) +
                   '）') +
+              (musicPath ? '。背景音乐：' + musicPath : '') +
               '。访客页可能有约 1～10 分钟缓存，请强刷或稍后再看。',
             'success'
           );
