@@ -828,6 +828,101 @@
     });
   }
 
+  function musicPathForFile(file, mime) {
+    var ext = extFromAudioMime(mime);
+    var fname = (file && file.name ? file.name : '').toLowerCase();
+    if (/\.m4a$/.test(fname)) ext = 'm4a';
+    else if (/\.ogg$/.test(fname)) ext = 'ogg';
+    else if (/\.wav$/.test(fname)) ext = 'wav';
+    else if (/\.mp3$/.test(fname)) ext = 'mp3';
+    return 'assets/music/bgm.' + ext;
+  }
+
+  /** 选中音乐后立刻上传到仓库，避免「同步成功但没带上音频」 */
+  function uploadMusicFileToGitHub(file) {
+    var token = getGhToken();
+    if (!token) {
+      return Promise.reject(new Error('还没有 Token，请先在同步栏保存 GitHub 令牌'));
+    }
+    var owner = lsGet(GH_OWNER_KEY, DEFAULT_OWNER) || DEFAULT_OWNER;
+    var repo = lsGet(GH_REPO_KEY, DEFAULT_REPO) || DEFAULT_REPO;
+    var branch = lsGet(GH_BRANCH_KEY, DEFAULT_BRANCH) || DEFAULT_BRANCH;
+    var headers = ghApiHeaders(token);
+    return readFileAsBase64(file).then(function (parsed) {
+      var size = estimateBase64Bytes(parsed.base64);
+      if (size > MAX_MUSIC_BYTES) {
+        throw new Error('音频超过 ' + formatBytes(MAX_MUSIC_BYTES));
+      }
+      var rel = musicPathForFile(file, parsed.mime);
+      setProfileTip(
+        '正在上传背景音乐到仓库（' + formatBytes(file.size) + '），请勿关闭页面…',
+        false
+      );
+      return ghPutContentWithRetry(
+        ghContentsApi(owner, repo, rel),
+        branch,
+        headers,
+        'Add Moments background music ' + rel,
+        parsed.base64,
+        '上传背景音乐 ' + rel,
+        function (n, status) {
+          setProfileTip('上传音乐遇 ' + status + '，重试 ' + n + '/3…', false);
+        }
+      ).then(function () {
+        readProfileFieldDraft();
+        var d = ensureDraftProfile();
+        d.musicUrl = rel;
+        var profileObj = {
+          name: d.name || '',
+          bio: typeof d.bio === 'string' ? d.bio : '',
+          initial: d.initial || (d.name ? d.name.slice(0, 1) : '?'),
+          coverUrl: d.coverUrl || '',
+          avatarUrl: d.avatarUrl || '',
+          coverHue: typeof d.coverHue === 'number' ? d.coverHue : 200,
+          musicUrl: rel,
+        };
+        var profileText = buildProfileJsonText(profileObj);
+        setProfileTip('音乐文件已上传，正在更新 profile.json…', false);
+        return ghPutContentWithRetry(
+          ghContentsApi(owner, repo, 'profile.json'),
+          branch,
+          headers,
+          'Set Moments background music in profile.json',
+          utf8ToBase64(profileText),
+          '更新 profile.json（背景音乐）',
+          function (n, status) {
+            setProfileTip('更新 profile 遇 ' + status + '，重试 ' + n + '/3…', false);
+          }
+        ).then(function () {
+          return verifyRemoteMatches(
+            ghContentsApi(owner, repo, 'profile.json'),
+            branch,
+            headers,
+            profileText,
+            'profile.json'
+          ).then(function () {
+            pendingMusicFile = null;
+            App.setProfile(profileObj);
+            draftProfile = App.getProfile();
+            renderProfilePreviews();
+            if (App.syncMusicFromProfile) App.syncMusicFromProfile();
+            lsSet(GH_LAST_SYNC_KEY, String(Date.now()));
+            renderLastSync();
+            var hint = $('adminMusicHint');
+            if (hint) hint.textContent = '当前：' + rel;
+            setProfileTip(
+              '背景音乐已上传并校验成功：' +
+                rel +
+                '。请硬刷新首页，点右上角音符播放。',
+              false
+            );
+            return rel;
+          });
+        });
+      });
+    });
+  }
+
   function pickProfileMusic(file) {
     if (!file) return Promise.resolve();
     var mime = file.type || '';
@@ -849,22 +944,23 @@
     var urlEl = $('adminMusicUrl');
     if (urlEl) urlEl.value = '';
     renderProfilePreviews();
-    var hint = $('adminMusicHint');
-    if (hint) {
-      hint.textContent =
-        '已选择「' +
-        (file.name || '音频') +
-        '」（' +
-        formatBytes(file.size) +
-        '）。请点「保存资料」，然后马上「同步」上传（大文件不写入本机缓存）。';
+    if (!getGhToken()) {
+      setProfileTip(
+        '已选好音乐，但还没有 GitHub 令牌。请先在上方保存令牌，再重新选择一次音乐。',
+        true
+      );
+      return Promise.resolve();
     }
-    setProfileTip(
-      '已选好音乐（' +
-        formatBytes(file.size) +
-        '）。请点「保存资料」，接着马上点「同步」。',
-      false
-    );
-    return Promise.resolve();
+    return uploadMusicFileToGitHub(file).catch(function (err) {
+      var msg =
+        err && err.status
+          ? mapGhError(err.status, err.body || err.json) +
+            (err.label ? '（' + err.label + '）' : '')
+          : err && err.message
+            ? err.message
+            : String(err);
+      setProfileTip('音乐上传失败：' + msg, true);
+    });
   }
 
   function clearProfileMusic() {
