@@ -312,9 +312,18 @@
         var list = Array.isArray(data) ? data : data && data.posts;
         var normalized = normalizePosts(list);
         if (!normalized) throw new Error('invalid posts.json');
-        /* 仓库为权威；本机仅保留仓库里还没有的 id（未同步的本地草稿） */
+        /* 仓库为唯一权威来源；本机只保留仓库没有的本地草稿 id */
         var localHad = posts && posts.length ? posts : [];
-        posts = mergePostsById(normalized, localHad);
+        var remoteIds = {};
+        normalized.forEach(function (p) {
+          if (p && p.id) remoteIds[p.id] = true;
+        });
+        var localOnly = localHad.filter(function (p) {
+          return p && p.id && !remoteIds[p.id];
+        });
+        posts = normalized.concat(localOnly).sort(function (a, b) {
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
         save();
         postsPublish.ok = true;
         return true;
@@ -1234,6 +1243,22 @@
       onMove(e.clientY);
     });
     window.addEventListener('mouseup', onEnd);
+
+    /* 点击某一项即可选中（未拖动时），避免只能靠滚轮 */
+    col.addEventListener('click', function (e) {
+      if (drag.moved) return;
+      var item = e.target && e.target.closest ? e.target.closest('.ym-picker-item') : null;
+      if (!item || !col.contains(item)) return;
+      var idx = parseInt(item.getAttribute('data-index'), 10);
+      if (isNaN(idx)) {
+        var items = col.querySelectorAll('.ym-picker-item');
+        idx = Array.prototype.indexOf.call(items, item);
+      }
+      if (idx < 0) return;
+      scrollYmColToIndex(col, idx, true, which);
+      e.preventDefault();
+      e.stopPropagation();
+    });
   }
 
   function openYmPanel(target) {
@@ -1322,7 +1347,8 @@
       return;
     }
 
-    var anchor = document.querySelector('.post[data-ym="' + key + '"]');
+    var monthPosts = document.querySelectorAll('.post[data-ym="' + key + '"]');
+    var anchor = monthPosts[0] || null;
     if (!anchor) {
       var year = String(key).slice(0, 4);
       anchor = document.querySelector('.post[data-ym^="' + year + '-"]');
@@ -1333,6 +1359,9 @@
     }
     var top = anchor.getBoundingClientRect().top + window.pageYOffset - 8;
     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    if (monthPosts.length) {
+      showToast(key.replace('-', '年') + '月 · ' + monthPosts.length + ' 条');
+    }
   }
 
   /* —— Events —— */
@@ -1599,6 +1628,20 @@
 
   postsPublish.promise = fetchPublishedPosts().then(function (ok) {
     renderFeed();
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      if (params.get('clear') === '1') {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (eClr) {}
+      }
+      var ymQ = params.get('ym');
+      if (ymQ && /^\d{4}-\d{2}$/.test(ymQ)) {
+        window.setTimeout(function () {
+          jumpToYm(ymQ);
+        }, 320);
+      }
+    } catch (eParam) {}
     return ok;
   });
   fetchPublishedProfile().then(function (ok) {

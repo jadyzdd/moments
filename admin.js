@@ -1848,13 +1848,13 @@
         return merged;
       })
       .catch(function (err) {
-        /* 读仓库失败不阻断同步，但可能仍有覆盖风险；给出提示 */
         console.warn('merge remote posts failed', err);
-        setSyncStatus(
-          '未能读取仓库动态做合并，将仅用本机数据同步（若本机偏旧可能丢条目）。继续…',
-          'pending'
-        );
-        return null;
+        var msg =
+          '未能读取仓库动态做合并，已中止同步，以免用旧缓存覆盖线上条目。请检查网络/令牌后重试。';
+        setSyncStatus(msg, 'error');
+        var e = new Error(msg);
+        e._mergeAbort = true;
+        throw e;
       });
   }
 
