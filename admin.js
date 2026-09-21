@@ -376,12 +376,19 @@
   }
 
   function deletePost(id) {
-    if (!confirm('确定删除这条动态？此操作不可撤销。')) return;
+    if (!id) return;
+    if (!confirm('确定删除这条动态？删除后请再点「同步」才会从访客页去掉。')) return;
+    if (App.markPostsDeleted) App.markPostsDeleted([id]);
     var next = App.getPosts().filter(function (p) {
       return p.id !== id;
     });
     App.setPosts(next);
     renderAdminList();
+    if (App.renderFeed) App.renderFeed();
+    setSyncStatus(
+      '已在本机删除。请点「同步」推送到仓库，否则刷新后可能仍从仓库出现。',
+      'pending'
+    );
   }
 
   /* —— Editor —— */
@@ -1836,12 +1843,26 @@
         var merged = App.mergePostsById
           ? App.mergePostsById(localList, remoteList)
           : localList;
+        /* 尊重本机主动删除：不要把已删 id 从仓库再补回来 */
+        if (App.filterOutDeletedPosts) {
+          merged = App.filterOutDeletedPosts(merged);
+        }
         var before = localList.length;
         App.setPosts(merged);
         var added = merged.length - before;
-        if (added > 0) {
+        var deletedPending =
+          App.loadDeletedIds && App.loadDeletedIds().length
+            ? App.loadDeletedIds().length
+            : 0;
+        if (added > 0 || deletedPending > 0) {
           setSyncStatus(
-            '已与仓库合并，补回 ' + added + ' 条本机缺少的动态，继续同步…',
+            (added > 0
+              ? '已与仓库合并，补回 ' + added + ' 条本机缺少的动态'
+              : '已与仓库核对') +
+              (deletedPending
+                ? '；将推送删除 ' + deletedPending + ' 条'
+                : '') +
+              '，继续同步…',
             'pending'
           );
         }
@@ -2074,6 +2095,18 @@
           App.setProfile(JSON.parse(profileText));
           draftProfile = App.getProfile();
           loadProfileForm();
+          /* 已成功推送到仓库的删除标记可以清除 */
+          if (App.clearDeletedIds && App.loadDeletedIds) {
+            var still = {};
+            (App.getPosts() || []).forEach(function (p) {
+              if (p && p.id) still[p.id] = true;
+            });
+            App.clearDeletedIds(
+              App.loadDeletedIds().filter(function (id) {
+                return !still[id];
+              })
+            );
+          }
           lsSet(GH_LAST_SYNC_KEY, String(Date.now()));
           renderLastSync();
           renderAdminList();

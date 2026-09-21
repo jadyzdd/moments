@@ -5,6 +5,7 @@
   'use strict';
 
   const STORAGE_KEY = 'moments_feed_v2';
+  const DELETED_IDS_KEY = 'moments_deleted_ids_v1';
   const PROFILE_KEY = 'moments_profile_v1';
   const D = window.MomentsData;
 
@@ -113,6 +114,60 @@
       .sort(function (a, b) {
         return (b.createdAt || 0) - (a.createdAt || 0);
       });
+  }
+
+
+  function loadDeletedIds() {
+    try {
+      var raw = localStorage.getItem(DELETED_IDS_KEY);
+      if (!raw) return [];
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter(function (id) { return typeof id === 'string' && id; }) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveDeletedIds(ids) {
+    try {
+      var uniq = [];
+      var seen = {};
+      (ids || []).forEach(function (id) {
+        if (!id || seen[id]) return;
+        seen[id] = true;
+        uniq.push(id);
+      });
+      if (!uniq.length) localStorage.removeItem(DELETED_IDS_KEY);
+      else localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(uniq));
+    } catch (e) {
+      console.warn('save deleted ids failed', e);
+    }
+  }
+
+  function markPostsDeleted(ids) {
+    var cur = loadDeletedIds();
+    (ids || []).forEach(function (id) {
+      if (id && cur.indexOf(id) < 0) cur.push(id);
+    });
+    saveDeletedIds(cur);
+    return cur;
+  }
+
+  function clearDeletedIds(ids) {
+    if (!ids || !ids.length) return loadDeletedIds();
+    var drop = {};
+    ids.forEach(function (id) { drop[id] = true; });
+    var next = loadDeletedIds().filter(function (id) { return !drop[id]; });
+    saveDeletedIds(next);
+    return next;
+  }
+
+  function filterOutDeletedPosts(list) {
+    var del = loadDeletedIds();
+    if (!del.length) return list || [];
+    var map = {};
+    del.forEach(function (id) { map[id] = true; });
+    return (list || []).filter(function (p) { return p && p.id && !map[p.id]; });
   }
 
   /** 按 id 合并两份动态：两边都保留；同一 id 以 primary 为准（通常是本机编辑） */
@@ -321,9 +376,17 @@
         var localOnly = localHad.filter(function (p) {
           return p && p.id && !remoteIds[p.id];
         });
-        posts = normalized.concat(localOnly).sort(function (a, b) {
-          return (b.createdAt || 0) - (a.createdAt || 0);
-        });
+        posts = filterOutDeletedPosts(
+          normalized.concat(localOnly).sort(function (a, b) {
+            return (b.createdAt || 0) - (a.createdAt || 0);
+          })
+        );
+        /* 仓库里已经没有的删除标记可以清掉 */
+        clearDeletedIds(
+          loadDeletedIds().filter(function (id) {
+            return !remoteIds[id];
+          })
+        );
         save();
         postsPublish.ok = true;
         return true;
@@ -1662,6 +1725,10 @@
     mergePostsById: mergePostsById,
     whenPublishedPostsReady: whenPublishedPostsReady,
     fetchPublishedPosts: fetchPublishedPosts,
+    markPostsDeleted: markPostsDeleted,
+    clearDeletedIds: clearDeletedIds,
+    filterOutDeletedPosts: filterOutDeletedPosts,
+    loadDeletedIds: loadDeletedIds,
     getProfile: function () {
       return {
         name: profile.name,
