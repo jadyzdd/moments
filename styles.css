@@ -1897,59 +1897,71 @@ body.admin-open .ym-entry {
 }
 
 
-/* —— Background music FAB（朋友圈风格） —— */
+/* —— Background music（钉在封面右上，类似微信朋友圈） —— */
 .music-fab {
-  position: fixed;
-  z-index: 45;
-  right: max(14px, calc((100vw - var(--max-w)) / 2 + 14px));
-  /* 右上角；略低于安全区，避免被手机浏览器顶栏挡住 */
-  top: calc(env(safe-area-inset-top, 0px) + 52px);
-  width: 40px;
-  height: 40px;
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
   border: none;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.42);
+  padding: 0;
+  background: rgba(0, 0, 0, 0.28);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
   -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .music-fab.hidden {
   display: none !important;
 }
 
+.music-fab-ring {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+
 .music-fab-disc {
-  font-size: 18px;
+  position: relative;
+  z-index: 1;
+  font-size: 15px;
   line-height: 1;
   display: block;
   transform-origin: 50% 55%;
 }
 
-.music-fab.is-playing .music-fab-disc {
-  animation: musicSpin 4.5s linear infinite;
+.music-fab.is-playing .music-fab-disc,
+.music-fab.is-playing .music-fab-ring {
+  animation: musicSpin 3.8s linear infinite;
 }
 
 .music-fab.is-muted {
-  opacity: 0.72;
+  opacity: 0.9;
 }
 
 .music-fab.is-unset {
-  opacity: 0.85;
+  opacity: 0.75;
 }
 
 .music-fab.is-muted::after {
   content: "";
   position: absolute;
-  width: 2px;
-  height: 22px;
-  background: #fff;
+  z-index: 2;
+  width: 1.5px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.95);
   border-radius: 1px;
-  transform: rotate(45deg);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+  transform: rotate(40deg);
 }
 
 @keyframes musicSpin {
@@ -1981,8 +1993,3 @@ body.lightbox-open .music-fab {
   background: #fff;
 }
 
-@media (min-width: 560px) {
-  .music-fab {
-    right: max(16px, calc(50% - var(--max-w) / 2 + 16px));
-  }
-}

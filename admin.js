@@ -828,15 +828,21 @@
     });
   }
 
-  function musicPathForFile(file, mime) {
+    function musicPathForFile(file, mime) {
     var ext = extFromAudioMime(mime);
-    var fname = (file && file.name ? file.name : '').toLowerCase();
-    if (/\.m4a$/.test(fname)) ext = 'm4a';
-    else if (/\.ogg$/.test(fname)) ext = 'ogg';
-    else if (/\.wav$/.test(fname)) ext = 'wav';
-    else if (/\.mp3$/.test(fname)) ext = 'mp3';
-    return 'assets/music/bgm.' + ext;
+    var rawName = (file && file.name ? file.name : 'bgm').toLowerCase();
+    if (/\.m4a$/.test(rawName)) ext = 'm4a';
+    else if (/\.ogg$/.test(rawName)) ext = 'ogg';
+    else if (/\.wav$/.test(rawName)) ext = 'wav';
+    else if (/\.mp3$/.test(rawName)) ext = 'mp3';
+    var base = rawName.replace(/\.[^.]+$/, '');
+    base = base.replace(/[^a-z0-9\u4e00-\u9fff._-]+/gi, '-').replace(/^-+|-+$/g, '');
+    if (!base) base = 'bgm';
+    if (base.length > 40) base = base.slice(0, 40);
+    /* 可用任意文件名；统一放在 assets/music/ 下 */
+    return 'assets/music/' + base + '.' + ext;
   }
+
 
   /** 选中音乐后立刻上传到仓库，避免「同步成功但没带上音频」 */
   function uploadMusicFileToGitHub(file) {
@@ -1019,7 +1025,7 @@
       else if (/\.ogg$/.test(fname)) ext = 'ogg';
       else if (/\.wav$/.test(fname)) ext = 'wav';
       else if (/\.mp3$/.test(fname)) ext = 'mp3';
-      var rel = 'assets/music/bgm.' + ext;
+      var rel = musicPathForFile(pendingMusicFile, parsed.mime);
       var d = ensureDraftProfile();
       d.musicUrl =
         'data:' +
