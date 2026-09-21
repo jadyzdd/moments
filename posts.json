@@ -592,6 +592,25 @@
     "createdAt": 1587711600000
   },
   {
+    "id": "post-mublquit-ip2yn",
+    "author": {
+      "name": "水恋洞",
+      "initial": "水"
+    },
+    "text": "简简单单的一顿小烧烤\n居然改变了一个人的人生轨迹\n也确实是没想到\n平平淡淡的生活日常\n才是最有魅力的",
+    "images": [
+      "assets/uploads/20260922-1cebun.jpg",
+      "assets/uploads/20260922-1cl44z.jpg",
+      "assets/uploads/20260922-1eikp0.jpg",
+      "assets/uploads/20260922-g1n8l1.jpg"
+    ],
+    "location": "杭州 · 家",
+    "likes": [],
+    "likedByMe": false,
+    "comments": [],
+    "createdAt": 1585939800000
+  },
+  {
     "id": "pdf2020-p13",
     "author": {
       "name": "小明",
