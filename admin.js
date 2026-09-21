@@ -23,7 +23,7 @@
   var MAX_POSTS_JSON_BYTES = 2 * 1024 * 1024;
   /** Warn / block sync for a single uploaded image file */
   var MAX_FILE_BYTES = 3 * 1024 * 1024;
-  var MAX_MUSIC_BYTES = 8 * 1024 * 1024;
+  var MAX_MUSIC_BYTES = 15 * 1024 * 1024;
   var IMG_MAX_EDGE = 1280;
   var IMG_JPEG_QUALITY = 0.76;
   var UPLOADS_DIR = 'assets/uploads';
@@ -34,6 +34,7 @@
   var syncing = false;
   /** Draft profile fields while admin panel is open */
   var draftProfile = null;
+  var pendingMusicFile = null;
 
   function $(id) {
     return document.getElementById(id);
@@ -667,9 +668,16 @@
     var musicEl = $('adminMusicUrl');
     if (musicEl) {
       var typed = (musicEl.value || '').trim();
-      /* 若刚选了本地 data: 音频，不要被空输入框清掉 */
       if (typed) d.musicUrl = typed;
-      else if (!(d.musicUrl && String(d.musicUrl).indexOf('data:') === 0)) d.musicUrl = '';
+      else if (
+        d.musicUrl &&
+        (String(d.musicUrl).indexOf('data:') === 0 ||
+          d.musicUrl === 'assets/music/bgm-pending')
+      ) {
+        /* keep pending / data music */
+      } else if (!pendingMusicFile) {
+        d.musicUrl = '';
+      }
     }
     return d;
   }
@@ -678,6 +686,35 @@
     if (!App) return;
     var d = readProfileFieldDraft();
     var mu = (d.musicUrl || '').trim();
+    if (mu === 'assets/music/bgm-pending') {
+      if (!pendingMusicFile) {
+        setProfileTip('待上传的音乐已失效，请重新选择音频文件。', true);
+        return;
+      }
+      if (d.musicUrl === 'assets/music/bgm-pending') {
+        /* keep pending marker only in draft; do not put huge audio into localStorage */
+      }
+      var toSave = {
+        name: d.name,
+        bio: d.bio,
+        initial: d.initial,
+        coverUrl: d.coverUrl || '',
+        avatarUrl: d.avatarUrl || '',
+        coverHue: d.coverHue,
+        musicUrl: '',
+      };
+      App.setProfile(toSave);
+      draftProfile = App.getProfile();
+      draftProfile.musicUrl = 'assets/music/bgm-pending';
+      renderProfilePreviews();
+      setProfileTip(
+        '资料已保存。请马上点「同步」，上传「' +
+          (pendingMusicFile.name || '音频') +
+          '」。',
+        false
+      );
+      return;
+    }
     if (mu && !looksLikeAudioFileUrl(mu)) {
       setProfileTip(
         '音乐地址无效：Epidemic Sound / 网易云等是网页，不能播放。请用「选音乐」上传 mp3，或粘贴以 .mp3/.m4a 结尾的直链。',
@@ -685,6 +722,7 @@
       );
       return;
     }
+    pendingMusicFile = null;
     App.setProfile(d);
     draftProfile = App.getProfile();
     renderProfilePreviews();
@@ -792,31 +830,45 @@
 
   function pickProfileMusic(file) {
     if (!file) return Promise.resolve();
-    setProfileTip('正在读取音频…', false);
-    return readAudioFileAsDataUrl(file)
-      .then(function (url) {
-        if (!url) {
-          setProfileTip('请选择 mp3 / m4a / ogg / wav 音频文件', true);
-          return;
-        }
-        var d = ensureDraftProfile();
-        d.musicUrl = url;
-        var urlEl = $('adminMusicUrl');
-        if (urlEl) urlEl.value = '';
-        renderProfilePreviews();
-        setProfileTip(
-          '已选好音乐（' +
-            formatBytes(file.size) +
-            '），请点「保存资料」写入本机，再「同步」。',
-          false
-        );
-      })
-      .catch(function (err) {
-        setProfileTip(err && err.message ? err.message : String(err), true);
-      });
+    var mime = file.type || '';
+    var fname = (file.name || '').toLowerCase();
+    if ((!mime || mime.indexOf('audio/') !== 0) && !/\.(mp3|m4a|aac|ogg|wav)$/.test(fname)) {
+      setProfileTip('请选择 mp3 / m4a / ogg / wav 音频文件', true);
+      return Promise.resolve();
+    }
+    if (file.size > MAX_MUSIC_BYTES) {
+      setProfileTip(
+        '音频超过 ' + formatBytes(MAX_MUSIC_BYTES) + '，请先压缩到 15MB 以内，或换较短的曲子',
+        true
+      );
+      return Promise.resolve();
+    }
+    pendingMusicFile = file;
+    var d = ensureDraftProfile();
+    d.musicUrl = 'assets/music/bgm-pending';
+    var urlEl = $('adminMusicUrl');
+    if (urlEl) urlEl.value = '';
+    renderProfilePreviews();
+    var hint = $('adminMusicHint');
+    if (hint) {
+      hint.textContent =
+        '已选择「' +
+        (file.name || '音频') +
+        '」（' +
+        formatBytes(file.size) +
+        '）。请点「保存资料」，然后马上「同步」上传（大文件不写入本机缓存）。';
+    }
+    setProfileTip(
+      '已选好音乐（' +
+        formatBytes(file.size) +
+        '）。请点「保存资料」，接着马上点「同步」。',
+      false
+    );
+    return Promise.resolve();
   }
 
   function clearProfileMusic() {
+    pendingMusicFile = null;
     var d = ensureDraftProfile();
     d.musicUrl = '';
     var urlEl = $('adminMusicUrl');
@@ -825,10 +877,64 @@
     setProfileTip('已清除背景音乐，请点「保存资料」写入本机。', false);
   }
 
+  function readFileAsBase64(file) {
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onerror = function () {
+        reject(fr.error || new Error('read failed'));
+      };
+      fr.onload = function () {
+        var result = String(fr.result || '');
+        var comma = result.indexOf(',');
+        if (comma < 0) {
+          reject(new Error('无法读取音频'));
+          return;
+        }
+        resolve({
+          mime: file.type || 'audio/mpeg',
+          base64: result.slice(comma + 1).replace(/\s+/g, ''),
+          name: file.name || 'bgm.mp3',
+        });
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+
   /**
    * If cover/avatar are raster data URLs, queue uploads to fixed asset paths
    * and rewrite draft to relative paths for profile.json.
    */
+
+  function resolvePendingMusicForSync() {
+    if (!pendingMusicFile) {
+      return Promise.resolve();
+    }
+    setSyncStatus('正在读取背景音乐…', 'pending');
+    return readFileAsBase64(pendingMusicFile).then(function (parsed) {
+      var size = estimateBase64Bytes(parsed.base64);
+      if (size > MAX_MUSIC_BYTES) {
+        throw new Error(
+          '音频超过 ' + formatBytes(MAX_MUSIC_BYTES) + '，无法同步'
+        );
+      }
+      var ext = extFromAudioMime(parsed.mime);
+      var fname = (pendingMusicFile.name || '').toLowerCase();
+      if (/\.m4a$/.test(fname)) ext = 'm4a';
+      else if (/\.ogg$/.test(fname)) ext = 'ogg';
+      else if (/\.wav$/.test(fname)) ext = 'wav';
+      else if (/\.mp3$/.test(fname)) ext = 'mp3';
+      var rel = 'assets/music/bgm.' + ext;
+      var d = ensureDraftProfile();
+      d.musicUrl =
+        'data:' +
+        (parsed.mime || 'audio/mpeg') +
+        ';base64,' +
+        parsed.base64;
+      d._pendingMusicRel = rel;
+      return rel;
+    });
+  }
+
   function prepareProfileForSync(prof) {
     var cloned = JSON.parse(JSON.stringify(prof || {}));
     var uploads = [];
@@ -859,6 +965,11 @@
     handle('avatarUrl', 'avatar');
 
     var musicVal = cloned.musicUrl;
+    var forcedRel = cloned._pendingMusicRel;
+    delete cloned._pendingMusicRel;
+    if (musicVal === 'assets/music/bgm-pending') {
+      musicVal = '';
+    }
     if (isAudioDataUrl(musicVal)) {
       var m = /^data:(audio\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(musicVal);
       if (m) {
@@ -869,7 +980,7 @@
           oversized.push({ field: 'musicUrl', size: asize });
         } else {
           var aext = extFromAudioMime(amime);
-          var arel = 'assets/music/bgm.' + aext;
+          var arel = forcedRel || 'assets/music/bgm.' + aext;
           uploads.push({
             path: arel,
             content: ab64,
@@ -1621,24 +1732,34 @@
       var allUploads;
       var localPostsHash;
       var localProfileHash;
+      setSyncStatus('正在处理本地数据…', 'pending');
+      resolvePendingMusicForSync()
+        .then(function () {
       try {
-        setSyncStatus('正在处理本地数据…', 'pending');
         flushOpenEditorBeforeSync();
         if (draftProfile) {
           readProfileFieldDraft();
-          App.setProfile(draftProfile);
-          draftProfile = App.getProfile();
+          if (draftProfile.musicUrl === 'assets/music/bgm-pending' && pendingMusicFile) {
+            /* music data already injected by resolvePendingMusicForSync into draftProfile */
+          } else {
+            App.setProfile(draftProfile);
+            draftProfile = App.getProfile();
+          }
         }
         prepared = preparePostsForSync(App.getPosts());
-        preparedProfile = prepareProfileForSync(App.getProfile());
+        preparedProfile = prepareProfileForSync(
+          draftProfile || App.getProfile()
+        );
         if (prepared.oversized.length || preparedProfile.oversized.length) {
           var biggest = (prepared.oversized[0] || preparedProfile.oversized[0]).size;
           setSyncStatus(
-            '有图片超过单文件上限 ' +
-              formatBytes(MAX_FILE_BYTES) +
-              '（约 ' +
+            '有文件超过上传上限（约 ' +
               formatBytes(biggest) +
-              '）。请先压缩或换较小的图后再同步。',
+              '）。图片上限 ' +
+              formatBytes(MAX_FILE_BYTES) +
+              '，音乐上限 ' +
+              formatBytes(MAX_MUSIC_BYTES) +
+              '。请压缩后再同步。',
             'error'
           );
           syncing = false;
@@ -1667,7 +1788,7 @@
         uploadCount = allUploads.length;
         setSyncStatus(
           uploadCount
-            ? '正在上传 ' + uploadCount + ' 张图片…'
+            ? '正在上传 ' + uploadCount + ' 个文件…'
             : '正在同步 posts.json / profile.json…（' + formatBytes(bytes) + '）',
           'pending'
         );
@@ -1681,8 +1802,14 @@
         return;
       }
 
+      if (!allUploads) return;
+
       var headers = ghApiHeaders(token);
-      uploadFilesSequentially(
+      // 上传状态文案：音乐也算文件
+      if (uploadCount) {
+        setSyncStatus('正在上传 ' + uploadCount + ' 个文件…', 'pending');
+      }
+      return uploadFilesSequentially(
         allUploads,
         owner,
         repo,
@@ -1690,7 +1817,7 @@
         headers,
         function (done, total, item) {
           setSyncStatus(
-            '正在上传图片 ' +
+            '正在上传文件 ' +
               done +
               '/' +
               total +
@@ -1761,6 +1888,7 @@
           });
         })
         .then(function () {
+          pendingMusicFile = null;
           App.setPosts(JSON.parse(text));
           App.setProfile(JSON.parse(profileText));
           draftProfile = App.getProfile();
@@ -1771,7 +1899,7 @@
           setSyncStatus(
             '同步成功并已校验' +
               (uploadCount
-                ? '（上传 ' + uploadCount + ' 张图，posts/profile 已与仓库一致）'
+                ? '（上传 ' + uploadCount + ' 个文件，posts/profile 已与仓库一致）'
                 : '（posts/profile 已与仓库一致，指纹 ' +
                   localPostsHash.slice(0, 6) +
                   '）') +
@@ -1801,6 +1929,15 @@
           }
         })
         .then(function () {
+          syncing = false;
+          updateSyncButtonState();
+        });
+        })
+        .catch(function (err) {
+          setSyncStatus(
+            '同步失败：' + (err && err.message ? err.message : String(err)),
+            'error'
+          );
           syncing = false;
           updateSyncButtonState();
         });
