@@ -194,16 +194,28 @@
 
   function saveProfile() {
     try {
+      var mu = profile.musicUrl || '';
+      /* 绝不把整段音频 data URL 写进 localStorage（会 QuotaExceeded 导致页面报错） */
+      if (typeof mu === 'string' && mu.indexOf('data:') === 0) mu = '';
+      var cover = profile.coverUrl || '';
+      var avatar = profile.avatarUrl || '';
+      if (typeof cover === 'string' && cover.indexOf('data:') === 0 && cover.length > 200000) {
+        /* 超大封面 data URL 也跳过持久化，避免撑爆配额 */
+        cover = '';
+      }
+      if (typeof avatar === 'string' && avatar.indexOf('data:') === 0 && avatar.length > 200000) {
+        avatar = '';
+      }
       localStorage.setItem(
         PROFILE_KEY,
         JSON.stringify({
           name: profile.name,
           bio: profile.bio,
           initial: profile.initial,
-          coverUrl: profile.coverUrl || '',
-          avatarUrl: profile.avatarUrl || '',
+          coverUrl: cover,
+          avatarUrl: avatar,
           coverHue: profile.coverHue,
-          musicUrl: profile.musicUrl || '',
+          musicUrl: mu,
           savedAt: Date.now(),
         })
       );

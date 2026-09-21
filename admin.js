@@ -668,16 +668,12 @@
     var musicEl = $('adminMusicUrl');
     if (musicEl) {
       var typed = (musicEl.value || '').trim();
-      if (typed) d.musicUrl = typed;
-      else if (
-        d.musicUrl &&
-        (String(d.musicUrl).indexOf('data:') === 0 ||
-          d.musicUrl === 'assets/music/bgm-pending')
-      ) {
-        /* keep pending / data music */
-      } else if (!pendingMusicFile) {
-        d.musicUrl = '';
+      if (typed) {
+        d.musicUrl = typed;
       }
+      /* 输入框空时保留 draft 里已有的 musicUrl（含仓库相对路径）。
+         type=url 曾把 assets/... 判为非法并清空输入，导致同步误删背景音乐。
+         只有点「清除」才会把 musicUrl 置空。 */
     }
     return d;
   }
@@ -828,7 +824,7 @@
     });
   }
 
-    function musicPathForFile(file, mime) {
+  function musicPathForFile(file, mime) {
     var ext = extFromAudioMime(mime);
     var rawName = (file && file.name ? file.name : 'bgm').toLowerCase();
     if (/\.m4a$/.test(rawName)) ext = 'm4a';
@@ -916,10 +912,12 @@
             renderLastSync();
             var hint = $('adminMusicHint');
             if (hint) hint.textContent = '当前：' + rel;
+            var urlEl = $('adminMusicUrl');
+            if (urlEl) urlEl.value = rel;
             setProfileTip(
               '背景音乐已上传并校验成功：' +
                 rel +
-                '。请硬刷新首页，点右上角音符播放。',
+                '。无需再点同步上传音乐；硬刷新首页后点右上角音符即可播放。若还要同步动态，可再点「同步」。',
               false
             );
             return rel;
@@ -1011,34 +1009,35 @@
     if (!pendingMusicFile) {
       return Promise.resolve();
     }
-    setSyncStatus('正在读取背景音乐…', 'pending');
-    return readFileAsBase64(pendingMusicFile).then(function (parsed) {
-      var size = estimateBase64Bytes(parsed.base64);
-      if (size > MAX_MUSIC_BYTES) {
-        throw new Error(
-          '音频超过 ' + formatBytes(MAX_MUSIC_BYTES) + '，无法同步'
-        );
-      }
-      var ext = extFromAudioMime(parsed.mime);
-      var fname = (pendingMusicFile.name || '').toLowerCase();
-      if (/\.m4a$/.test(fname)) ext = 'm4a';
-      else if (/\.ogg$/.test(fname)) ext = 'ogg';
-      else if (/\.wav$/.test(fname)) ext = 'wav';
-      else if (/\.mp3$/.test(fname)) ext = 'mp3';
-      var rel = musicPathForFile(pendingMusicFile, parsed.mime);
+    /* 大文件不要塞进 draft 的 data URL（易导致页面卡死 / QuotaExceeded）。
+       同步前走与「选音乐」相同的即时上传。 */
+    setSyncStatus(
+      '正在上传背景音乐（' + formatBytes(pendingMusicFile.size || 0) + '）…',
+      'pending'
+    );
+    var file = pendingMusicFile;
+    return uploadMusicFileToGitHub(file).then(function (rel) {
+      pendingMusicFile = null;
       var d = ensureDraftProfile();
-      d.musicUrl =
-        'data:' +
-        (parsed.mime || 'audio/mpeg') +
-        ';base64,' +
-        parsed.base64;
-      d._pendingMusicRel = rel;
+      d.musicUrl = rel;
       return rel;
     });
   }
 
   function prepareProfileForSync(prof) {
-    var cloned = JSON.parse(JSON.stringify(prof || {}));
+    var src = prof || {};
+    /* 避免对超大 audio data URL 做 JSON 深拷贝拖垮页面 */
+    var cloned = {
+      name: src.name || '',
+      bio: typeof src.bio === 'string' ? src.bio : '',
+      initial: src.initial || '',
+      coverUrl: src.coverUrl || '',
+      avatarUrl: src.avatarUrl || '',
+      coverHue: typeof src.coverHue === 'number' ? src.coverHue : 200,
+      musicUrl: '',
+      _pendingMusicRel: src._pendingMusicRel,
+    };
+    cloned.musicUrl = typeof src.musicUrl === 'string' ? src.musicUrl : '';
     var uploads = [];
     var oversized = [];
 
@@ -1066,34 +1065,18 @@
     handle('coverUrl', 'cover');
     handle('avatarUrl', 'avatar');
 
-    var musicVal = cloned.musicUrl;
-    var forcedRel = cloned._pendingMusicRel;
     delete cloned._pendingMusicRel;
+    var musicVal = typeof cloned.musicUrl === 'string' ? cloned.musicUrl.trim() : '';
     if (musicVal === 'assets/music/bgm-pending') {
       musicVal = '';
     }
     if (isAudioDataUrl(musicVal)) {
-      var m = /^data:(audio\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(musicVal);
-      if (m) {
-        var amime = m[1].toLowerCase();
-        var ab64 = m[2].replace(/\s+/g, '');
-        var asize = estimateBase64Bytes(ab64);
-        if (asize > MAX_MUSIC_BYTES) {
-          oversized.push({ field: 'musicUrl', size: asize });
-        } else {
-          var aext = extFromAudioMime(amime);
-          var arel = forcedRel || 'assets/music/bgm.' + aext;
-          uploads.push({
-            path: arel,
-            content: ab64,
-            size: asize,
-            mime: amime,
-          });
-          cloned.musicUrl = arel;
-        }
-      }
-    } else if (typeof musicVal === 'string') {
-      cloned.musicUrl = musicVal.trim();
+      /* 不再经同步通道塞 base64（易卡死页面）；音乐应已由即时上传写好路径 */
+      throw new Error(
+        '检测到未上传完的本地音频。请重新点「选音乐」上传（需已保存令牌），成功后再同步。'
+      );
+    } else if (musicVal) {
+      cloned.musicUrl = musicVal;
     } else {
       cloned.musicUrl = '';
     }
@@ -1857,15 +1840,14 @@
         prepared = preparePostsForSync(App.getPosts());
         preparedProfile = prepareProfileForSync(profileForSync);
         if (expectMusicUpload) {
-          var musicOk =
+          var musicPathOk =
             preparedProfile.profile &&
-            preparedProfile.profile.musicUrl &&
-            preparedProfile.uploads.some(function (u) {
-              return u.path && u.path.indexOf('assets/music/') === 0;
-            });
-          if (!musicOk) {
+            typeof preparedProfile.profile.musicUrl === 'string' &&
+            preparedProfile.profile.musicUrl.indexOf('assets/music/') === 0 &&
+            preparedProfile.profile.musicUrl !== 'assets/music/bgm-pending';
+          if (!musicPathOk) {
             throw new Error(
-              '背景音乐没有进入本次同步。请重新点「选音乐」选择 mp3，然后不要刷新页面，立刻点「保存资料」再「同步」。'
+              '背景音乐没有进入本次同步。请重新点「选音乐」选择 mp3（需已保存 GitHub 令牌），上传成功后再点「同步」。'
             );
           }
         }
