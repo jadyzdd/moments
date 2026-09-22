@@ -1,37 +1,5 @@
 [
   {
-    "id": "pdf2021-p50",
-    "author": {
-      "name": "小明",
-      "initial": "明"
-    },
-    "text": "我们的故事\n未完待续\n……",
-    "images": [
-      "assets/uploads/pdf2021-p50.jpg"
-    ],
-    "location": "杭州",
-    "likes": [],
-    "likedByMe": false,
-    "comments": [],
-    "createdAt": 1644843600000
-  },
-  {
-    "id": "pdf2021-p49",
-    "author": {
-      "name": "小明",
-      "initial": "明"
-    },
-    "text": "情人节\n快乐",
-    "images": [
-      "assets/uploads/pdf2021-p49.jpg"
-    ],
-    "location": "杭州",
-    "likes": [],
-    "likedByMe": false,
-    "comments": [],
-    "createdAt": 1644836400000
-  },
-  {
     "id": "pdf2021-p48",
     "author": {
       "name": "小明",
