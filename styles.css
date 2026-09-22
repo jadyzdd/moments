@@ -911,7 +911,14 @@ body.lightbox-open {
   max-width: var(--max-w);
   margin: 0 auto;
   background: rgba(0, 0, 0, 0.92);
-  animation: fadeIn 0.2s ease;
+  opacity: 1;
+  transition: opacity 0.28s ease;
+  will-change: opacity;
+}
+
+.lightbox.is-closing {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .lightbox.hidden {
@@ -971,6 +978,51 @@ body.lightbox-open {
   -webkit-user-drag: none;
   pointer-events: auto;
   margin: auto;
+  transform: translate3d(0, 0, 0) scale(1);
+  opacity: 1;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.lightbox-img.is-dragging {
+  transition: none;
+}
+
+.lightbox-img.is-enter-from-right {
+  transform: translate3d(28%, 0, 0) scale(0.98);
+  opacity: 0;
+}
+
+.lightbox-img.is-enter-from-left {
+  transform: translate3d(-28%, 0, 0) scale(0.98);
+  opacity: 0;
+}
+
+.lightbox-img.is-exit-to-left {
+  transform: translate3d(-22%, 0, 0) scale(0.98);
+  opacity: 0;
+}
+
+.lightbox-img.is-exit-to-right {
+  transform: translate3d(22%, 0, 0) scale(0.98);
+  opacity: 0;
+}
+
+.lightbox.is-opening .lightbox-img {
+  animation: lbZoomIn 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes lbZoomIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
 }
 
 /* 超长图：按宽度铺满，高度随内容，预览里可上下滑动看全貌 */
