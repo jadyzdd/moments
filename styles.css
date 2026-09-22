@@ -980,44 +980,45 @@ body.lightbox-open {
   margin: auto;
   transform: translate3d(0, 0, 0) scale(1);
   opacity: 1;
-  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.28s ease;
+  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.25, 1),
+    opacity 0.24s ease;
   will-change: transform, opacity;
   backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .lightbox-img.is-dragging {
-  transition: none;
+  transition: none !important;
 }
 
 .lightbox-img.is-enter-from-right {
-  transform: translate3d(28%, 0, 0) scale(0.98);
+  transform: translate3d(36%, 0, 0) scale(0.985);
   opacity: 0;
 }
 
 .lightbox-img.is-enter-from-left {
-  transform: translate3d(-28%, 0, 0) scale(0.98);
+  transform: translate3d(-36%, 0, 0) scale(0.985);
   opacity: 0;
 }
 
 .lightbox-img.is-exit-to-left {
-  transform: translate3d(-22%, 0, 0) scale(0.98);
+  transform: translate3d(-30%, 0, 0) scale(0.985);
   opacity: 0;
 }
 
 .lightbox-img.is-exit-to-right {
-  transform: translate3d(22%, 0, 0) scale(0.98);
+  transform: translate3d(30%, 0, 0) scale(0.985);
   opacity: 0;
 }
 
 .lightbox.is-opening .lightbox-img {
-  animation: lbZoomIn 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: lbZoomIn 0.38s cubic-bezier(0.2, 0.9, 0.25, 1);
 }
 
 @keyframes lbZoomIn {
   from {
     opacity: 0;
-    transform: translate3d(0, 8px, 0) scale(0.94);
+    transform: translate3d(0, 10px, 0) scale(0.96);
   }
   to {
     opacity: 1;

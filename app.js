@@ -931,8 +931,9 @@
     });
   }
 
-  function showLightboxIndex(i, dir) {
+  function showLightboxIndex(i, dir, opts) {
     if (!lbImages.length || lbAnimLock) return;
+    opts = opts || {};
     var next =
       ((i % lbImages.length) + lbImages.length) % lbImages.length;
     if (next === lbIndex && !dir) {
@@ -947,36 +948,50 @@
     }
     lbAnimLock = true;
     var img = els.lightboxImg;
-    img.style.transform = '';
-    img.style.opacity = '';
     var exitCls = dir < 0 ? 'is-exit-to-left' : 'is-exit-to-right';
     var enterCls = dir < 0 ? 'is-enter-from-right' : 'is-enter-from-left';
-    img.classList.add(exitCls);
-    window.setTimeout(function () {
+
+    function playEnter() {
       lbIndex = next;
       updateLightboxUI(false);
-      img.classList.remove(exitCls);
+      img.classList.remove(exitCls, 'is-dragging');
+      img.style.transition = 'none';
+      img.style.transform = '';
+      img.style.opacity = '';
       img.classList.add(enterCls);
-      // force reflow then clear enter class for slide-in
       void img.offsetWidth;
       requestAnimationFrame(function () {
-        img.classList.remove(enterCls);
-        prefetchLightboxNeighbors();
-        window.setTimeout(function () {
-          lbAnimLock = false;
-        }, 300);
+        requestAnimationFrame(function () {
+          img.style.transition = '';
+          img.classList.remove(enterCls);
+          prefetchLightboxNeighbors();
+          window.setTimeout(function () {
+            lbAnimLock = false;
+          }, 320);
+        });
       });
-    }, 200);
+    }
+
+    if (opts.skipExit) {
+      playEnter();
+      return;
+    }
+
+    img.style.transform = '';
+    img.style.opacity = '';
+    img.classList.remove('is-dragging');
+    img.classList.add(exitCls);
+    window.setTimeout(playEnter, 180);
   }
 
-  function lightboxPrev() {
+  function lightboxPrev(opts) {
     if (lbImages.length <= 1) return;
-    showLightboxIndex(lbIndex - 1, 1);
+    showLightboxIndex(lbIndex - 1, 1, opts);
   }
 
-  function lightboxNext() {
+  function lightboxNext(opts) {
     if (lbImages.length <= 1) return;
-    showLightboxIndex(lbIndex + 1, -1);
+    showLightboxIndex(lbIndex + 1, -1, opts);
   }
 
   function updateLightboxUI() {
@@ -1651,10 +1666,15 @@
           var img = els.lightboxImg;
           img.classList.add('is-dragging');
           var w = window.innerWidth || 375;
-          var resist = Math.max(-0.92, Math.min(0.92, touchDeltaX / w));
-          var ox = resist * w * 0.55;
-          var op = Math.max(0.45, 1 - Math.abs(resist) * 0.4);
-          img.style.transform = 'translate3d(' + ox + 'px, 0, 0) scale(' + (1 - Math.abs(resist) * 0.03) + ')';
+          var resist = Math.max(-1, Math.min(1, touchDeltaX / w));
+          var ox = resist * w * 0.72;
+          var op = Math.max(0.55, 1 - Math.abs(resist) * 0.32);
+          img.style.transform =
+            'translate3d(' +
+            ox +
+            'px, 0, 0) scale(' +
+            (1 - Math.abs(resist) * 0.02) +
+            ')';
           img.style.opacity = String(op);
         }
       },
@@ -1665,18 +1685,52 @@
       function () {
         if (!lbOpen) return;
         var img = els.lightboxImg;
-        img.classList.remove('is-dragging');
         var w = window.innerWidth || 375;
+        var dx = touchDeltaX;
+        var locked = lbSwipeLocked;
         var shouldFlip =
-          lbSwipeLocked === 'h' &&
+          locked === 'h' &&
           lbImages.length > 1 &&
-          Math.abs(touchDeltaX) > Math.min(64, w * 0.18);
-        img.style.transform = '';
-        img.style.opacity = '';
-        if (shouldFlip) {
-          if (touchDeltaX < 0) lightboxNext();
-          else lightboxPrev();
+          Math.abs(dx) > Math.min(48, w * 0.14);
+        var ease =
+          'transform 0.26s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease';
+
+        if (locked === 'h' && lbImages.length > 1) {
+          img.classList.remove('is-dragging');
+          if (shouldFlip) {
+            lbAnimLock = true;
+            var outX = (dx < 0 ? -1 : 1) * Math.max(w * 0.42, Math.abs(dx) + w * 0.12);
+            img.style.transition = ease;
+            img.style.transform =
+              'translate3d(' + outX + 'px, 0, 0) scale(0.97)';
+            img.style.opacity = '0';
+            var goNext = dx < 0;
+            window.setTimeout(function () {
+              img.style.transition = '';
+              img.style.transform = '';
+              img.style.opacity = '';
+              // Unlock so showLightboxIndex can run the enter animation.
+              lbAnimLock = false;
+              if (goNext) lightboxNext({ skipExit: true });
+              else lightboxPrev({ skipExit: true });
+            }, 250);
+          } else {
+            img.style.transition = ease;
+            img.style.transform = 'translate3d(0, 0, 0) scale(1)';
+            img.style.opacity = '1';
+            window.setTimeout(function () {
+              img.style.transition = '';
+              img.style.transform = '';
+              img.style.opacity = '';
+              img.classList.remove('is-dragging');
+            }, 280);
+          }
+        } else {
+          img.classList.remove('is-dragging');
+          img.style.transform = '';
+          img.style.opacity = '';
         }
+
         touchDeltaX = 0;
         touchDeltaY = 0;
         lbSwipeLocked = null;
