@@ -96,6 +96,25 @@
     "createdAt": 1640962800000
   },
   {
+    "id": "post-mucgs6ij-cj4x7",
+    "author": {
+      "name": "水恋洞",
+      "initial": "水"
+    },
+    "text": "小面馆正式完成了他的历史使命\n它当年是我离职的底气\n是我们第一桶金的来源\n谢谢小面馆",
+    "images": [
+      "assets/uploads/20260922-qlazav.jpg",
+      "assets/uploads/20260922-h0t4xk.jpg",
+      "assets/uploads/20260922-1dkuc0.jpg",
+      "assets/uploads/20260922-hl9hw2.jpg"
+    ],
+    "location": "杭州 · 重庆小面",
+    "likes": [],
+    "likedByMe": false,
+    "comments": [],
+    "createdAt": 1640942340000
+  },
+  {
     "id": "post-mucgl0wr-f5wr9",
     "author": {
       "name": "水恋洞",
