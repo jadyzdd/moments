@@ -947,6 +947,8 @@
     }
     lbAnimLock = true;
     var img = els.lightboxImg;
+    img.style.transform = '';
+    img.style.opacity = '';
     var exitCls = dir < 0 ? 'is-exit-to-left' : 'is-exit-to-right';
     var enterCls = dir < 0 ? 'is-enter-from-right' : 'is-enter-from-left';
     img.classList.add(exitCls);
@@ -1669,12 +1671,11 @@
           lbSwipeLocked === 'h' &&
           lbImages.length > 1 &&
           Math.abs(touchDeltaX) > Math.min(64, w * 0.18);
+        img.style.transform = '';
+        img.style.opacity = '';
         if (shouldFlip) {
           if (touchDeltaX < 0) lightboxNext();
           else lightboxPrev();
-        } else {
-          img.style.transform = '';
-          img.style.opacity = '';
         }
         touchDeltaX = 0;
         touchDeltaY = 0;
