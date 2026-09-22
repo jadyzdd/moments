@@ -162,6 +162,16 @@
     return next;
   }
 
+  function isSeedPostId(id) {
+    return typeof id === 'string' && id.indexOf('seed-') === 0;
+  }
+
+  function dropSeedPosts(list) {
+    return (list || []).filter(function (p) {
+      return p && p.id && !isSeedPostId(p.id);
+    });
+  }
+
   function filterOutDeletedPosts(list) {
     var del = loadDeletedIds();
     if (!del.length) return list || [];
@@ -374,10 +384,16 @@
           if (p && p.id) remoteIds[p.id] = true;
         });
         var localOnly = localHad.filter(function (p) {
-          return p && p.id && !remoteIds[p.id];
+          /* 示例 seed-* 绝不能跟仓库合并，否则会顶在时间线最前面 */
+          return (
+            p &&
+            p.id &&
+            !remoteIds[p.id] &&
+            !isSeedPostId(p.id)
+          );
         });
         posts = filterOutDeletedPosts(
-          normalized.concat(localOnly).sort(function (a, b) {
+          dropSeedPosts(normalized.concat(localOnly)).sort(function (a, b) {
             return (b.createdAt || 0) - (a.createdAt || 0);
           })
         );
@@ -1682,8 +1698,15 @@
   /* —— Init —— */
   // 先本地/示例渲染，再尝试覆盖为 posts.json / profile.json（访客共享源）
   if (!loadFromLocal()) {
+    /* 仅作首屏占位，不要写入 localStorage，否则示例会污染真实时间线 */
     loadSeed();
-    save();
+  } else {
+    /* 清掉本机残留的示例动态 */
+    var cleaned = dropSeedPosts(posts);
+    if (cleaned.length !== posts.length) {
+      posts = cleaned;
+      save();
+    }
   }
   loadProfileLocal();
   renderProfile();
