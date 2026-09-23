@@ -4150,6 +4150,22 @@
     "createdAt": 1412349300000
   },
   {
+    "id": "album-b2-04",
+    "author": {
+      "name": "小明",
+      "initial": "明"
+    },
+    "text": "世界杯\n你心爱的西班牙早早出局\n原本对足球不感冒的我开始了解它们\n我们一起看世界杯决赛\n而且希望跟你一起看下届 下下届…\n一起为斗牛士军团摇旗呐喊",
+    "images": [
+      "assets/uploads/20131211-b204.jpg"
+    ],
+    "location": "杭州 · 朋友客厅",
+    "likes": [],
+    "likedByMe": false,
+    "comments": [],
+    "createdAt": 1402468980000
+  },
+  {
     "id": "album-b3-03",
     "author": {
       "name": "小明",
@@ -4229,22 +4245,6 @@
     "likedByMe": false,
     "comments": [],
     "createdAt": 1388018820000
-  },
-  {
-    "id": "album-b2-04",
-    "author": {
-      "name": "小明",
-      "initial": "明"
-    },
-    "text": "世界杯\n你心爱的西班牙早早出局\n原本对足球不感冒的我开始了解它们\n我们一起看世界杯决赛\n而且希望跟你一起看下届 下下届…\n一起为斗牛士军团摇旗呐喊",
-    "images": [
-      "assets/uploads/20131211-b204.jpg"
-    ],
-    "location": "杭州 · 朋友客厅",
-    "likes": [],
-    "likedByMe": false,
-    "comments": [],
-    "createdAt": 1386744180000
   },
   {
     "id": "album-b2-03",
