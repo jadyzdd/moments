@@ -170,9 +170,20 @@
     return typeof id === 'string' && id.indexOf('seed-') === 0;
   }
 
+  /* 真实帖子早期用过 seed- 前缀的 id，改名保留，不能当示例删掉 */
+  var LEGACY_REAL_IDS = { 'seed-first-meeting': 'first-meeting-20130730' };
+
   function dropSeedPosts(list) {
-    return (list || []).filter(function (p) {
-      return p && p.id && !isSeedPostId(p.id);
+    var seen = {};
+    return (list || []).map(function (p) {
+      if (p && p.id && LEGACY_REAL_IDS[p.id]) {
+        p = Object.assign({}, p, { id: LEGACY_REAL_IDS[p.id] });
+      }
+      return p;
+    }).filter(function (p) {
+      if (!p || !p.id || isSeedPostId(p.id) || seen[p.id]) return false;
+      seen[p.id] = true;
+      return true;
     });
   }
 
